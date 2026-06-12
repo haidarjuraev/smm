@@ -5,11 +5,15 @@ import {
   TrendingUp, Users, Eye, Target, X, MessageCircle, Heart,
   CheckSquare, Settings, Menu, Calendar as CalendarIcon, 
   Layers, User, Moon, Sun, MonitorSmartphone, Link as LinkIcon,
-  FileText, ChevronDown, ChevronRight, Lock, Unlock, PlayCircle,
-  Instagram, Facebook, Youtube, Send, Music, LayoutDashboard,
+  FileText, ChevronDown, ChevronRight, Lock, Unlock, PlayCircle, Send, Music, LayoutDashboard,
   PanelLeftClose, PanelLeftOpen, ChevronLeft, Globe, ArrowDownToLine
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+
+const Instagram = Globe;
+const Facebook = Users;
+const Youtube = PlayCircle;
+
 
 const INITIAL_USERS = {
   admin: { id: 1, login: 'admin', role: 'admin', pass: '@Pokiza4565@', name: 'Руководитель', email: 'ceo@pokiza.com' },
