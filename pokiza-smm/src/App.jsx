@@ -7,11 +7,11 @@ import {
   Layers, User, Moon, Sun, MonitorSmartphone,
   FileText, ChevronDown, ChevronRight, Lock, Unlock,
   PlayCircle, Send, Music, LayoutDashboard,
-  PanelLeftClose, Globe, Menu
+  PanelLeftClose, Globe, Menu, GripVertical
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v9-2026-06-13';
+const APP_VERSION = 'd1-sync-v10-links-2026-06-13';
 
 // Используем стабильные иконки для исключения проблем билда
 const Instagram = Globe;
@@ -47,7 +47,6 @@ const FORMAT_COLORS = [
   { id: 'teal', bg: 'bg-teal-500', text: 'text-teal-500', border: 'border-teal-500', name: 'Бирюзовый' },
 ];
 
-// Функция для получения локальной даты, чтобы избежать смещения часовых поясов
 const getLocalISODate = () => {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -80,6 +79,66 @@ const getPlatformIcon = (platform, size = 18) => {
   if (n.includes('you')) return <Youtube size={size} strokeWidth={1.5} />;
   return <Globe size={size} strokeWidth={1.5} />;
 };
+
+const URL_PATTERN = /(https?:\/\/[^\s<]+|www\.[^\s<]+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<]*)?)/gi;
+const TRAILING_URL_PUNCTUATION = /[.,!?;:)\]}>]+$/;
+
+function LinkifiedText({ text, className = '' }) {
+  const value = String(text || '');
+  if (!value) return null;
+
+  const parts = [];
+  const regex = new RegExp(URL_PATTERN);
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(value)) !== null) {
+    const fullMatch = match[0];
+    const start = match.index;
+
+    if (start > lastIndex) {
+      parts.push(value.slice(lastIndex, start));
+    }
+
+    let linkText = fullMatch;
+    let trailing = '';
+    const trailingMatch = linkText.match(TRAILING_URL_PUNCTUATION);
+
+    if (trailingMatch) {
+      trailing = trailingMatch[0];
+      linkText = linkText.slice(0, -trailing.length);
+    }
+
+    if (linkText) {
+      const href = /^https?:\/\//i.test(linkText) ? linkText : `https://${linkText}`;
+      parts.push(
+        <a
+          key={`link-${start}-${linkText}`}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          className="text-blue-600 dark:text-blue-400 underline underline-offset-2 decoration-blue-400/60 hover:decoration-blue-600 break-all"
+        >
+          {linkText}
+        </a>
+      );
+    }
+
+    if (trailing) {
+      parts.push(trailing);
+    }
+
+    lastIndex = start + fullMatch.length;
+  }
+
+  if (lastIndex < value.length) {
+    parts.push(value.slice(lastIndex));
+  }
+
+  return <span className={`whitespace-pre-wrap break-words ${className}`}>{parts}</span>;
+}
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -125,7 +184,50 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
 }
 
 export default function AppWrapper() {
-  // Инициализация из localStorage для сохранения сессии
+  // PWA & Viewport Setup
+  useEffect(() => {
+    // Force Viewport to prevent iOS zoom
+    let viewportMeta = document.getElementsByName('viewport')[0];
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.name = 'viewport';
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0';
+
+    // Inject PWA Manifest dynamically
+    if (!document.getElementById('pokiza-dynamic-manifest')) {
+       const manifest = {
+          name: "Pokiza SMM",
+          short_name: "Pokiza",
+          display: "standalone",
+          background_color: "#FAFAFA",
+          theme_color: "#E53935",
+          icons: [{ src: "https://cdn-icons-png.flaticon.com/512/3254/3254068.png", sizes: "512x512", type: "image/png" }]
+       };
+       const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+       const manifestURL = URL.createObjectURL(manifestBlob);
+       const link = document.createElement('link');
+       link.id = 'pokiza-dynamic-manifest';
+       link.rel = 'manifest';
+       link.href = manifestURL;
+       document.head.appendChild(link);
+    }
+
+    // iOS PWA Meta Tags
+    if (!document.getElementsByName('apple-mobile-web-app-capable')[0]) {
+       const m1 = document.createElement('meta');
+       m1.name = "apple-mobile-web-app-capable";
+       m1.content = "yes";
+       document.head.appendChild(m1);
+       
+       const m2 = document.createElement('meta');
+       m2.name = "apple-mobile-web-app-status-bar-style";
+       m2.content = "default";
+       document.head.appendChild(m2);
+    }
+  }, []);
+
   const [usersDb, setUsersDb] = useState(() => {
     try {
       const saved = localStorage.getItem('pokiza_usersDb');
@@ -140,7 +242,6 @@ export default function AppWrapper() {
     } catch { return null; }
   });
 
-  // Синхронизация с localStorage
   useEffect(() => {
     localStorage.setItem('pokiza_usersDb', JSON.stringify(usersDb));
   }, [usersDb]);
@@ -178,11 +279,11 @@ function LoginScreen({ usersDb, onLogin }) {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Логин</label>
-            <input type="text" required className="w-full px-4 py-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-red-600/20 focus:border-red-600 outline-none transition-all dark:text-white" value={form.login} onChange={e => setForm({...form, login: e.target.value})} />
+            <input type="text" required className="w-full px-4 py-2.5 text-base md:text-sm font-medium bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-red-600/20 focus:border-red-600 outline-none transition-all dark:text-white" value={form.login} onChange={e => setForm({...form, login: e.target.value})} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Пароль</label>
-            <input type="password" required className="w-full px-4 py-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-red-600/20 focus:border-red-600 outline-none transition-all dark:text-white" value={form.pass} onChange={e => setForm({...form, pass: e.target.value})} />
+            <input type="password" required className="w-full px-4 py-2.5 text-base md:text-sm font-medium bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-red-600/20 focus:border-red-600 outline-none transition-all dark:text-white" value={form.pass} onChange={e => setForm({...form, pass: e.target.value})} />
           </div>
           {error && <p className="text-red-500 text-xs font-medium text-center bg-red-50 dark:bg-red-500/10 py-2 rounded-xl">{error}</p>}
           <button className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors mt-2 shadow-sm shadow-red-600/20 active:scale-95">Войти</button>
@@ -208,6 +309,9 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const [expandedPlatforms, setExpandedPlatforms] = useState({});
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: () => {} });
   const [printMode, setPrintMode] = useState(null);
+  
+  // Drag and Drop State
+  const [draggedTask, setDraggedTask] = useState(null);
   const taskSaveLockRef = useRef(false);
 
   const [tasks, setTasks] = useState([]);
@@ -230,8 +334,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
   const apiRequest = useCallback(async (path, options = {}) => {
     const response = await fetch(path, {
-      cache: 'no-store',
       ...options,
+      cache: 'no-store',
       headers: {
         'content-type': 'application/json',
         ...(options.headers || {})
@@ -276,8 +380,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
       return true;
     } catch (error) {
-      console.error('Ошибка загрузки данных из D1:', error);
-      if (!silent) showToast(error.message || 'Не удалось загрузить данные из базы', 'error');
+      console.error('Ошибка загрузки данных:', error);
+      if (!silent) showToast(error.message || 'Не удалось загрузить данные', 'error');
       return false;
     } finally {
       if (!silent) setIsLoadingData(false);
@@ -286,12 +390,9 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
   useEffect(() => {
     loadData(currentMonth);
-
-    // Автосинхронизация между admin и smm
     const timer = setInterval(() => {
       if (!document.hidden) loadData(currentMonth, true);
     }, 10000);
-
     return () => clearInterval(timer);
   }, [currentMonth, loadData]);
 
@@ -325,32 +426,38 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     showToast('Подготовка отчета, подождите...', 'success');
     setPrintMode(mode);
     
-    // Задержка для гарантии рендера скрытого DOM узла перед снимком
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Даем React время отрендерить скрытый блок
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const element = document.getElementById('pdf-content-wrapper');
     if(!element) {
-        showToast('Ошибка: Не удалось сгенерировать PDF', 'error');
+        showToast('Ошибка: Не удалось найти контент для PDF', 'error');
         setPrintMode(null);
         return;
     }
 
-    const doPrint = async () => {
+    const doPrint = () => {
       try {
+        const isLandscape = mode === 'plan';
         const opt = {
           margin:       [10, 10, 10, 10],
           filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: mode === 'plan' ? 'landscape' : 'portrait' }
+          html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: isLandscape ? 1200 : 850 },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
         };
         
-        await window.html2pdf().set(opt).from(element).save();
-        showToast('Файл успешно скачан', 'success');
+        window.html2pdf().set(opt).from(element).save().then(() => {
+            showToast('Файл успешно скачан', 'success');
+            setPrintMode(null);
+        }).catch(err => {
+            console.error('PDF Error inside promise:', err);
+            showToast('Ошибка при сохранении PDF', 'error');
+            setPrintMode(null);
+        });
       } catch (err) {
-        console.error('PDF Error:', err);
-        showToast('Ошибка при генерации файла', 'error');
-      } finally {
+        console.error('PDF Generator Crash:', err);
+        showToast('Критическая ошибка генератора PDF', 'error');
         setPrintMode(null);
       }
     };
@@ -373,7 +480,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     for (let kpiId of (kpiIdsToCheck || [])) {
        const kpi = kpis.find(k => k.id === kpiId);
        if (!kpi) continue;
-       // Строгая конвертация ID для точного сравнения
        const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && String(t.id) !== String(currentTaskId)).length;
        if (currentCount >= kpi.target) {
           showToast(`Лимит формата "${kpi.title}" исчерпан (${kpi.target} макс)`, 'error');
@@ -396,7 +502,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       showToast('Введите название задачи', 'error');
       return false;
     }
-
     if (!cleanTaskData.date) {
       showToast('Укажите дату задачи', 'error');
       return false;
@@ -443,12 +548,19 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     }
   }, [apiRequest, checkKpiLimits, currentMonth, loadData, platforms, showToast]);
 
-  const completeTask = useCallback(async (taskId, link) => {
-    if (!link.trim()) return showToast('Укажите ссылку', 'error');
+  const handleDropTask = async (targetDate) => {
+    if (!draggedTask || draggedTask.date === targetDate) {
+      setDraggedTask(null);
+      return;
+    }
+    const updated = { ...draggedTask, date: targetDate };
+    await saveTask(updated);
+    setDraggedTask(null);
+  };
 
-    try {
-      new URL(link);
-    } catch (e) {
+  const completeTask = useCallback(async (taskId, link) => {
+    if (!(link || '').trim()) return showToast('Укажите ссылку', 'error');
+    try { new URL(link); } catch (e) {
       return showToast('Введите корректную ссылку (начиная с http:// или https://)', 'error');
     }
 
@@ -465,7 +577,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       await loadData(currentMonth, true);
       showToast('Удалено');
     } catch (error) {
-      console.error('Ошибка удаления задачи:', error);
       showToast(error.message || 'Не удалось удалить задачу', 'error');
     }
   }), [apiRequest, confirmAction, currentMonth, loadData, showToast]);
@@ -473,25 +584,19 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const saveKpi = useCallback(async (kpiData) => {
     try {
       const id = kpiData.id ? String(kpiData.id) : `kpi_${Date.now()}`;
-
       await apiRequest('/api/kpis', {
         method: 'POST',
         body: JSON.stringify({
-          id,
-          platformId: kpiData.platformId,
-          title: kpiData.title,
-          target: Number(kpiData.target || 1),
-          colorId: kpiData.colorId || 'blue'
+          id, platformId: kpiData.platformId, title: kpiData.title,
+          target: Number(kpiData.target || 1), colorId: kpiData.colorId || 'blue'
         })
       });
-
       await loadData(currentMonth, true);
       showToast('Формат сохранен');
       setActiveModal(null);
       setEditingItem(null);
       return true;
     } catch (error) {
-      console.error('Ошибка сохранения KPI:', error);
       showToast(error.message || 'Не удалось сохранить формат', 'error');
       return false;
     }
@@ -503,7 +608,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       await loadData(currentMonth, true);
       showToast('Удалено');
     } catch (error) {
-      console.error('Ошибка удаления KPI:', error);
       showToast(error.message || 'Не удалось удалить формат', 'error');
     }
   }), [apiRequest, confirmAction, currentMonth, loadData, showToast]);
@@ -511,24 +615,18 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const savePlatform = useCallback(async (platData) => {
     try {
       const id = platData.id ? String(platData.id) : `p_${Date.now()}`;
-
       await apiRequest('/api/platforms', {
         method: 'POST',
         body: JSON.stringify({
-          id,
-          name: platData.name,
-          account: platData.account || '',
-          iconName: platData.iconName || 'globe'
+          id, name: platData.name, account: platData.account || '', iconName: platData.iconName || 'globe'
         })
       });
-
       await loadData(currentMonth, true);
       showToast('Платформа сохранена');
       setActiveModal(null);
       setEditingItem(null);
       return true;
     } catch (error) {
-      console.error('Ошибка сохранения платформы:', error);
       showToast(error.message || 'Не удалось сохранить платформу', 'error');
       return false;
     }
@@ -540,7 +638,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       await loadData(currentMonth, true);
       showToast('Платформа удалена');
     } catch (error) {
-      console.error('Ошибка удаления платформы:', error);
       showToast(error.message || 'Не удалось удалить платформу', 'error');
     }
   }), [apiRequest, confirmAction, currentMonth, loadData, showToast]);
@@ -550,22 +647,15 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       await apiRequest('/api/analytics', {
         method: 'POST',
         body: JSON.stringify({
-          month: currentMonth,
-          followers: Number(data.followers || 0),
-          reach: Number(data.reach || 0),
-          likes: Number(data.likes || 0),
-          comments: Number(data.comments || 0),
-          er: Number(data.er || 0),
-          text: data.text || '',
-          isSubmitted: data.isSubmitted ?? true
+          month: currentMonth, followers: Number(data.followers || 0), reach: Number(data.reach || 0),
+          likes: Number(data.likes || 0), comments: Number(data.comments || 0), er: Number(data.er || 0),
+          text: data.text || '', isSubmitted: data.isSubmitted ?? true
         })
       });
-
       await loadData(currentMonth, true);
       showToast(data.isSubmitted === false ? 'Отчет открыт для редактирования' : 'Отчет успешно сохранен');
       return true;
     } catch (error) {
-      console.error('Ошибка сохранения аналитики:', error);
       showToast(error.message || 'Не удалось сохранить аналитику', 'error');
       return false;
     }
@@ -618,7 +708,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
              {isSidebarExpanded && <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3 mt-2 px-3">Меню</div>}
              {NAV_ITEMS.filter(item => item.roles.includes(user.role)).map(item => (
                <button key={item.id} onClick={() => { setActiveTab(item.id); setIsSidebarExpanded(false); }} title={!isSidebarExpanded ? item.label : ''}
-                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${!isSidebarExpanded ? 'justify-center' : ''} ${activeTab === item.id ? (theme==='dark'?'bg-red-500/10 text-red-400':'bg-red-50 text-red-600') : (theme==='dark'?'text-slate-400 hover:bg-slate-800 hover:text-white':'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}`}>
+                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-base md:text-sm font-medium transition-colors ${!isSidebarExpanded ? 'justify-center' : ''} ${activeTab === item.id ? (theme==='dark'?'bg-red-500/10 text-red-400':'bg-red-50 text-red-600') : (theme==='dark'?'text-slate-400 hover:bg-slate-800 hover:text-white':'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}`}>
                  <item.icon size={20} strokeWidth={activeTab === item.id ? 2.5 : 2} className="shrink-0" /> {isSidebarExpanded && <span className="truncate">{item.label}</span>}
                </button>
              ))}
@@ -626,7 +716,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
            <div className={`p-4 border-t shrink-0 flex flex-col gap-4 ${theme==='dark'?'border-slate-800':'border-slate-100'}`}>
              <div className={`flex items-center gap-3 transition-all ${!isSidebarExpanded ? 'justify-center px-0' : 'px-2'}`}>
-               <div onClick={() => {setEditingItem(user); setActiveModal('editProfile'); setIsSidebarExpanded(false);}} className={`w-10 h-10 rounded-full shadow-sm border flex items-center justify-center font-semibold text-sm uppercase shrink-0 cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400 hover:bg-slate-700':'bg-white border-slate-200 text-red-600 hover:bg-slate-50'}`}>
+               <div onClick={() => {setEditingItem(user); setActiveModal('editProfile'); setIsSidebarExpanded(false);}} className={`w-10 h-10 rounded-full shadow-sm border flex items-center justify-center font-semibold text-base uppercase shrink-0 cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400 hover:bg-slate-700':'bg-white border-slate-200 text-red-600 hover:bg-slate-50'}`}>
                  {user.name[0]}
                </div>
                {isSidebarExpanded && (
@@ -656,7 +746,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
              <button onClick={()=>setTheme(theme==='light'?'dark':'light')} className="text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95">
                {theme === 'light' ? <Moon size={20}/> : <Sun size={20}/>}
              </button>
-             <div onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs uppercase cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400':'bg-slate-50 border-slate-200 text-red-600'}`}>
+             <div onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm uppercase cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400':'bg-slate-50 border-slate-200 text-red-600'}`}>
                 {user.name[0]}
              </div>
            </div>
@@ -670,7 +760,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
           <div className="flex items-center gap-4">
             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-colors ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-white border-slate-200'}`}>
               <CalendarIcon size={16} className="text-slate-400" />
-              <select value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="bg-transparent text-sm font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white">
+              <select value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="bg-transparent text-base md:text-sm font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white">
                 {MONTHS.map(m => <option key={m.value} value={m.value} className="dark:bg-slate-800">{m.label}</option>)}
               </select>
             </div>
@@ -685,7 +775,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
             <div className="md:hidden flex items-center justify-between mb-2">
                <h2 className="text-base font-semibold">{NAV_ITEMS.find(i => i.id === activeTab)?.label}</h2>
                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-white border-slate-200'}`}>
-                 <select value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="bg-transparent text-xs font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white">
+                 <select value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="bg-transparent text-base md:text-xs font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white">
                     {MONTHS.map(m => <option key={m.value} value={m.value} className="dark:bg-slate-800">{m.label}</option>)}
                  </select>
                </div>
@@ -695,11 +785,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
             {activeTab === 'tasks' && (
               <div className="animate-in fade-in space-y-8">
                 <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                  <button onClick={() => setSelectedDashboardPlatform('all')} className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all active:scale-95 ${selectedDashboardPlatform === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:shadow-sm')}`}>
+                  <button onClick={() => setSelectedDashboardPlatform('all')} className={`px-4 py-2 rounded-xl text-base md:text-sm font-semibold whitespace-nowrap transition-all active:scale-95 ${selectedDashboardPlatform === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:shadow-sm')}`}>
                     Сводка: Все
                   </button>
                   {platforms.map(p => (
-                     <button key={p.id} onClick={() => setSelectedDashboardPlatform(p.id)} className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 active:scale-95 ${selectedDashboardPlatform === p.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:shadow-sm')}`}>
+                     <button key={p.id} onClick={() => setSelectedDashboardPlatform(p.id)} className={`px-4 py-2 rounded-xl text-base md:text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 active:scale-95 ${selectedDashboardPlatform === p.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:shadow-sm')}`}>
                       {getPlatformIcon(p, 16)} {p.name}
                     </button>
                   ))}
@@ -717,7 +807,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                         <div className="mt-4">
                           <div className="flex items-baseline gap-1.5 mb-2.5">
                             <span className={`text-3xl font-bold tracking-tight ${kpi.current >= kpi.target ? 'text-green-500' : (theme==='dark'?'text-white':'text-slate-900')}`}>{kpi.current}</span>
-                            <span className="text-slate-400 font-medium text-sm">/ {kpi.target}</span>
+                            <span className="text-slate-400 font-medium text-base md:text-sm">/ {kpi.target}</span>
                           </div>
                           <div className={`h-1.5 w-full rounded-full overflow-hidden ${theme==='dark'?'bg-slate-800':'bg-slate-100'}`}>
                             <div className={`h-full rounded-full transition-all duration-700 ease-out ${kpi.current >= kpi.target ? 'bg-green-500' : 'bg-red-500'}`} style={{ width: `${Math.min(100, (kpi.current / kpi.target) * 100)}%` }} />
@@ -765,11 +855,12 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                     <h2 className="text-lg font-semibold flex items-center gap-2"><FileText size={20} className="text-orange-500"/> Контент-план</h2>
                     <p className="text-xs text-slate-500 mt-1 font-medium">Таблица планирования идей и форматов</p>
                   </div>
-                  <button onClick={() => handleDownloadPDF('plan')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                  <button onClick={() => handleDownloadPDF('plan')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-base md:text-sm font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
                     <Download size={16}/> Скачать PDF
                   </button>
                 </div>
                 
+                {/* Mobile View */}
                 <div className="md:hidden space-y-3">
                   <InlineTaskCardEditor 
                     currentMonth={currentMonth} platforms={platforms} kpis={kpis} theme={theme} 
@@ -784,11 +875,21 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                     const isOverdue = task.status !== 'completed' && task.date < todayStr;
 
                     return (
-                      <div key={task.id} className={`p-4 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
+                      <div 
+                        key={task.id} 
+                        draggable
+                        onDragStart={() => setDraggedTask(task)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.preventDefault(); handleDropTask(task.date); }}
+                        className={`p-4 rounded-3xl border shadow-sm transition-all cursor-grab active:cursor-grabbing ${draggedTask?.id === task.id ? 'opacity-50 ring-2 ring-red-500' : ''} ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}
+                      >
                         <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="min-w-0">
-                            <div className="text-[10px] font-semibold uppercase text-slate-400 mb-1">{task.date.split('-').reverse().join('.')}</div>
-                            <h3 className="font-semibold text-sm text-slate-900 dark:text-white break-words">{task.title}</h3>
+                          <div className="flex gap-3">
+                            <div className="text-slate-300 dark:text-slate-600 mt-0.5"><GripVertical size={16}/></div>
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-semibold uppercase text-slate-400 mb-1">{task.date.split('-').reverse().join('.')}</div>
+                              <h3 className="font-semibold text-base md:text-sm text-slate-900 dark:text-white break-words">{task.title}</h3>
+                            </div>
                           </div>
                           {task.status === 'completed' ? (
                             <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-green-500/10 text-green-600 border border-green-500/20 whitespace-nowrap"><CheckCircle2 size={12}/> Готово</span>
@@ -798,14 +899,14 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                             <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20 whitespace-nowrap"><Clock size={12}/> В плане</span>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-2 mb-3">
+                        <div className="flex flex-wrap gap-2 mb-3 pl-7">
                           <span className={`text-[10px] font-semibold uppercase flex items-center gap-1.5 px-2 py-1 rounded-lg ${theme==='dark'?'bg-slate-800 text-red-400':'bg-slate-50 text-red-600'}`}>{getPlatformIcon(platform, 12)} {platform?.name}</span>
                           {taskKpis.map((k, i) => {
                             const colorClass = getFormatColor(k);
                             return <span key={i} className={`text-[10px] font-medium px-2 py-1 rounded-lg border inline-flex items-center gap-1.5 ${theme==='dark' ? `bg-slate-800 ${colorClass.border} ${colorClass.text}` : `bg-white shadow-sm ${colorClass.border} ${colorClass.text}`}`}><div className={`w-1.5 h-1.5 rounded-full ${colorClass.bg}`}></div>{k.title}</span>
                           })}
                         </div>
-                        {task.text && <p className="text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words">{task.text}</p>}
+                        {task.text && <p className="text-sm md:text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words pl-7"><LinkifiedText text={task.text} /></p>}
                         <div className="flex justify-end gap-2">
                           <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-2 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
                           <button onClick={()=> deleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
@@ -815,6 +916,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   })}
                 </div>
 
+                {/* Desktop View */}
                 <div className={`hidden md:block border rounded-3xl shadow-sm overflow-hidden ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
                   <table className="w-full text-left border-collapse table-fixed">
                     <thead>
@@ -837,9 +939,19 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                            const isOverdue = task.status !== 'completed' && task.date < todayStr;
 
                            return (
-                             <tr key={task.id} className={`transition-colors group ${theme==='dark'?'hover:bg-slate-800/30':'hover:bg-slate-50/50'}`}>
+                             <tr 
+                               key={task.id} 
+                               draggable
+                               onDragStart={() => setDraggedTask(task)}
+                               onDragOver={(e) => e.preventDefault()}
+                               onDrop={(e) => { e.preventDefault(); handleDropTask(task.date); }}
+                               className={`transition-colors group cursor-grab active:cursor-grabbing ${draggedTask?.id === task.id ? 'opacity-40 bg-slate-100 dark:bg-slate-800' : (theme==='dark'?'hover:bg-slate-800/30':'hover:bg-slate-50/50')}`}
+                             >
                                 <td className="p-4 align-top">
-                                  <div className="font-medium text-sm">{task.date.split('-').reverse().join('.')}</div>
+                                  <div className="flex items-center gap-2">
+                                    <GripVertical size={16} className="text-slate-300 dark:text-slate-600"/>
+                                    <div className="font-medium text-sm">{task.date.split('-').reverse().join('.')}</div>
+                                  </div>
                                 </td>
                                 <td className="p-4 align-top">
                                   <div className="flex flex-col gap-2">
@@ -854,7 +966,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                                 </td>
                                 <td className="p-4 align-top">
                                   <div className="font-semibold text-sm mb-1.5 text-slate-800 dark:text-white">{task.title}</div>
-                                  {task.text && <div className="text-xs font-medium text-slate-500 line-clamp-2">{task.text}</div>}
+                                  {task.text && <div className="text-xs font-medium text-slate-500 line-clamp-2"><LinkifiedText text={task.text} /></div>}
                                 </td>
                                 <td className="p-4 text-right align-top">
                                   <div className="flex flex-col items-end gap-2">
@@ -887,6 +999,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   setEditingItem({ _date: date, _tasks: dayTasks }); 
                   setActiveModal('dayTasks');
                 }} 
+                onDropTask={handleDropTask}
               />
             )}
 
@@ -896,12 +1009,12 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   <div className={`mb-8 border-b pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${theme==='dark'?'border-slate-800':'border-slate-100'}`}>
                     <div>
                       <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 size={20} className="text-indigo-500"/> Сводка за {MONTHS.find(m=>m.value===currentMonth)?.label}</h2>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Аналитический отчет по итогам месяца</p>
+                      <p className="text-base md:text-xs text-slate-500 mt-1 font-medium">Аналитический отчет по итогам месяца</p>
                     </div>
                     {currentAnalytics.isSubmitted ? (
                       <div className="flex flex-col sm:items-end gap-2">
                         <span className="px-3 py-1.5 bg-green-500/10 text-green-600 text-[11px] font-semibold uppercase tracking-wider rounded-xl border border-green-500/20 flex items-center gap-1.5 w-fit"><Lock size={14}/> Отчет сдан</span>
-                        {isAdmin && <button onClick={() => saveAnalytics({ ...currentAnalytics, isSubmitted: false })} className="text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1.5 transition-colors active:scale-95"><Unlock size={12}/> Открыть для ред.</button>}
+                        {isAdmin && <button onClick={() => saveAnalytics({ ...currentAnalytics, isSubmitted: false })} className="text-base md:text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1.5 transition-colors active:scale-95"><Unlock size={12}/> Открыть для ред.</button>}
                       </div>
                     ) : (
                       <span className="px-3 py-1.5 bg-amber-500/10 text-amber-600 text-[11px] font-semibold uppercase tracking-wider rounded-xl border border-amber-500/20 w-fit">Ожидает сдачи</span>
@@ -922,9 +1035,9 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                 <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2">
                     <div>
                       <h2 className="text-lg font-semibold flex items-center gap-2"><Layers size={20} className="text-teal-500"/> Платформы и Форматы (KPI)</h2>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Управление площадками и плановыми показателями контента</p>
+                      <p className="text-base md:text-xs text-slate-500 mt-1 font-medium">Управление площадками и плановыми показателями контента</p>
                     </div>
-                    <button onClick={() => { setEditingItem({id:''}); setActiveModal('editPlatform'); }} className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-sm font-semibold rounded-xl transition-transform active:scale-95 shadow-sm">
+                    <button onClick={() => { setEditingItem({id:''}); setActiveModal('editPlatform'); }} className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-base md:text-sm font-semibold rounded-xl transition-transform active:scale-95 shadow-sm">
                       <Plus size={16} /> Добавить Платформу
                     </button>
                 </div>
@@ -967,7 +1080,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                                           <span className="font-medium text-sm text-slate-800 dark:text-slate-200">{kpi.title}</span>
                                        </div>
                                        <div className="flex items-center gap-2.5 shrink-0">
-                                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${theme==='dark'?'bg-slate-900 text-slate-300':'bg-slate-100 text-slate-600'}`}>{kpi.target} шт/мес</span>
+                                         <span className={`text-base md:text-xs font-semibold px-2.5 py-1 rounded-lg ${theme==='dark'?'bg-slate-900 text-slate-300':'bg-slate-100 text-slate-600'}`}>{kpi.target} шт/мес</span>
                                          <button onClick={(e) => { e.stopPropagation(); setEditingItem(kpi); setActiveModal('editKpi'); }} className="text-slate-400 hover:text-blue-500 transition-colors p-1 active:scale-95"><Edit2 size={14}/></button>
                                          <button onClick={(e) => { e.stopPropagation(); deleteKpi(kpi.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1 active:scale-95"><Trash2 size={14}/></button>
                                        </div>
@@ -993,20 +1106,20 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl border dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 gap-4">
                       <div>
                         <div className="font-semibold text-sm flex items-center gap-2 mb-1"><MonitorSmartphone size={18} className="text-blue-500"/> Тема интерфейса</div>
-                        <div className="text-xs text-slate-500">Светлый или темный режим</div>
+                        <div className="text-base md:text-xs text-slate-500">Светлый или темный режим</div>
                       </div>
                       <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1.5 rounded-xl w-fit">
-                        <button onClick={()=>setTheme('light')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all active:scale-95 ${theme==='light'?'bg-white shadow-sm text-slate-900':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Sun size={14}/> Светлая</button>
-                        <button onClick={()=>setTheme('dark')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all active:scale-95 ${theme==='dark'?'bg-slate-700 shadow-sm text-white':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Moon size={14}/> Темная</button>
+                        <button onClick={()=>setTheme('light')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-base md:text-xs font-semibold transition-all active:scale-95 ${theme==='light'?'bg-white shadow-sm text-slate-900':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Sun size={14}/> Светлая</button>
+                        <button onClick={()=>setTheme('dark')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-base md:text-xs font-semibold transition-all active:scale-95 ${theme==='dark'?'bg-slate-700 shadow-sm text-white':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Moon size={14}/> Темная</button>
                       </div>
                     </div>
                     
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl border dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 gap-4">
                       <div>
                         <div className="font-semibold text-sm flex items-center gap-2 mb-1"><User size={18} className="text-purple-500"/> Мой профиль</div>
-                        <div className="text-xs text-slate-500">Настройка отображаемого имени</div>
+                        <div className="text-base md:text-xs text-slate-500">Настройка отображаемого имени</div>
                       </div>
-                      <button onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className="px-5 py-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95">Изменить</button>
+                      <button onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className="px-5 py-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-base md:text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95">Изменить</button>
                     </div>
                   </div>
                 </section>
@@ -1015,7 +1128,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm max-w-3xl ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-lg font-semibold flex items-center gap-2"><Users size={20} className="text-blue-500"/> Пользователи системы</h2>
-                      <button onClick={() => { setEditingItem({id:''}); setActiveModal('addUser'); }} className="text-xs bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm flex items-center gap-2 hover:opacity-90 transition-transform active:scale-95"><Plus size={16}/> Добавить</button>
+                      <button onClick={() => { setEditingItem({id:''}); setActiveModal('addUser'); }} className="text-base md:text-xs bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm flex items-center gap-2 hover:opacity-90 transition-transform active:scale-95"><Plus size={16}/> Добавить</button>
                     </div>
                     <div className={`border rounded-2xl overflow-hidden divide-y ${theme==='dark'?'divide-slate-800 border-slate-800':'divide-slate-100 border-slate-100'}`}>
                       {Object.values(usersDb).map(u => (
@@ -1023,8 +1136,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                           <div className="flex items-center gap-4">
                              <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center font-bold text-base text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">{u.name[0]}</div>
                              <div>
-                               <div className="font-semibold text-sm text-slate-800 dark:text-slate-100">{u.name} <span className="text-xs text-slate-400 font-medium ml-2">@{u.login}</span></div>
-                               <div className="text-xs text-slate-500 mt-1">{u.email}</div>
+                               <div className="font-semibold text-sm text-slate-800 dark:text-slate-100">{u.name} <span className="text-base md:text-xs text-slate-400 font-medium ml-2">@{u.login}</span></div>
+                               <div className="text-base md:text-xs text-slate-500 mt-1">{u.email}</div>
                              </div>
                           </div>
                           <span className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-xl w-fit ${u.role==='admin'?'bg-red-500/10 text-red-600 border border-red-500/20':'bg-blue-500/10 text-blue-600 border border-blue-500/20'}`}>{u.role}</span>
@@ -1049,7 +1162,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               ))}
               
               <div className="relative -top-5 z-50">
-                 <button onClick={() => { setEditingItem({ date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-[#111]">
+                 <button onClick={() => { setEditingItem({ title: '', date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-[#111]">
                     <Plus size={28} strokeWidth={2.5} />
                  </button>
               </div>
@@ -1118,7 +1231,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                <div className="p-10 text-center text-slate-400 font-medium text-sm">На этот день задач нет.</div>
              )}
            </div>
-           <button onClick={() => { setActiveModal('addTask'); setEditingItem({ date: editingItem._date, kpiIds: [], platformId: platforms[0]?.id }); }} className="w-full mt-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95">
+           <button onClick={() => { setActiveModal('addTask'); setEditingItem({ title: '', date: editingItem._date, kpiIds: [], platformId: platforms[0]?.id }); }} className="w-full mt-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95">
               <Plus size={18}/> Запланировать задачу
            </button>
         </Modal>
@@ -1129,11 +1242,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
           <div className="space-y-5">
             <div>
               <label className="block text-xs font-semibold mb-2">Название платформы</label>
-              <input type="text" id="platName" defaultValue={editingItem?.name || ''} placeholder="Например: ВКонтакте" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="platName" defaultValue={editingItem?.name || ''} placeholder="Например: ВКонтакте" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">Аккаунт / Ссылка</label>
-              <input type="text" id="platAccount" defaultValue={editingItem?.account || ''} placeholder="@username" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="platAccount" defaultValue={editingItem?.account || ''} placeholder="@username" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
                <label className="block text-xs font-semibold mb-2">Иконка</label>
@@ -1162,17 +1275,17 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
           <div className="space-y-5">
             <div>
                <label className="block text-xs font-semibold mb-2">Платформа</label>
-               <select id="kpiPlatform" defaultValue={editingItem?.platformId || platforms[0]?.id} className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
+               <select id="kpiPlatform" defaultValue={editingItem?.platformId || platforms[0]?.id} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
                  {platforms.map(p => <option key={p.id} value={p.id}>{p.name} ({p.account})</option>)}
                </select>
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">Название формата</label>
-              <input type="text" id="kpiTitle" defaultValue={editingItem?.title || ''} placeholder="Например: Съемка Reels" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="kpiTitle" defaultValue={editingItem?.title || ''} placeholder="Например: Съемка Reels" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">План на месяц (шт)</label>
-              <input type="number" id="kpiTarget" defaultValue={editingItem?.target || 1} min="1" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="number" id="kpiTarget" defaultValue={editingItem?.target || 1} min="1" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-3 flex items-center gap-2">Цвет <span className="text-[10px] font-medium text-slate-400">(Для календаря)</span></label>
@@ -1203,19 +1316,19 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
           <div className="space-y-5">
             <div>
               <label className="block text-xs font-semibold mb-2">ФИО</label>
-              <input type="text" id="addUserName" placeholder="Иван Иванов" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="addUserName" placeholder="Иван Иванов" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">Логин</label>
-              <input type="text" id="addUserLogin" placeholder="new_smm" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="addUserLogin" placeholder="new_smm" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">Пароль</label>
-              <input type="text" id="addUserPass" placeholder="Пароль" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="addUserPass" placeholder="Пароль" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
                <label className="block text-xs font-semibold mb-2">Роль</label>
-               <select id="addUserRole" className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
+               <select id="addUserRole" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
                  <option value="smm">SMM Специалист</option>
                  <option value="admin">Администратор</option>
                </select>
@@ -1240,10 +1353,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
       {activeModal === 'editProfile' && (
         <Modal title="Мой профиль" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold mb-2">Отображаемое имя</label>
-              <input type="text" id="profileName" defaultValue={editingItem?.name || ''} className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="profileName" defaultValue={editingItem?.name || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <button onClick={() => {
                 const newName = document.getElementById('profileName').value;
@@ -1254,7 +1367,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                 onUpdateUser(prev => ({ ...prev, name: newName }));
                 showToast('Имя обновлено');
                 setActiveModal(null);
-              }} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl mt-4 text-sm active:scale-95 transition-transform">Сохранить изменения</button>
+              }} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-transform">Сохранить изменения</button>
+              
+             <button onClick={() => { setActiveModal(null); onLogout(); }} className="w-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-transform flex items-center justify-center gap-2">
+                 <LogOut size={16}/> Выйти из аккаунта
+             </button>
           </div>
         </Modal>
       )}
@@ -1264,10 +1381,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       )}
     </div>
 
-    {/* Блок для генерации PDF, скрытый из области видимости, но с реальными размерами */}
+    {/* Блок для генерации PDF. Используем absolute и избегаем fixed, чтобы не обрезалась высота */}
     {printMode && (
-      <div className="fixed -left-[9999px] top-0 z-[-1] overflow-visible">
-        <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 max-w-5xl mx-auto w-[1000px]">
+      <div className="absolute top-0 left-[-9999px] z-[-1] overflow-visible h-auto">
+        <div id="pdf-content-wrapper" className={`bg-white font-sans text-slate-900 p-8 mx-auto ${printMode === 'plan' ? 'w-[1100px]' : 'w-[800px]'}`}>
           {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} allData={analytics} months={MONTHS} />}
           {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} />}
         </div>
@@ -1305,9 +1422,9 @@ const TaskRow = React.memo(function TaskRow({ task, theme, platforms, kpis, onCo
       <div className="flex items-center gap-3 w-full md:w-auto shrink-0 mt-2 md:mt-0">
         {!isCompleted ? (
           <div className="flex w-full gap-2">
-            <input type="text" placeholder="Ссылка..." value={linkInput} onChange={e => setLinkInput(e.target.value)} className={`flex-1 md:w-56 px-3 py-2 border text-xs font-medium rounded-xl outline-none focus:border-red-600 transition-colors ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-white border-slate-200'}`} />
+            <input type="text" placeholder="Ссылка..." value={linkInput} onChange={e => setLinkInput(e.target.value)} className={`flex-1 md:w-56 px-3 py-2 border text-base md:text-sm font-medium rounded-xl outline-none focus:border-red-600 transition-colors ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-white border-slate-200'}`} />
             <div className="flex gap-1.5">
-              <button onClick={() => onComplete(task.id, linkInput)} className="px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-xs font-semibold rounded-xl hover:opacity-80 shrink-0 shadow-sm transition-all active:scale-95">Сдать</button>
+              <button onClick={() => onComplete(task.id, linkInput)} className="px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-base md:text-sm font-semibold rounded-xl hover:opacity-80 shrink-0 shadow-sm transition-all active:scale-95">Сдать</button>
               <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors shrink-0 active:scale-95"><Edit2 size={16}/></button>
               <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0 active:scale-95"><Trash2 size={16}/></button>
             </div>
@@ -1315,9 +1432,9 @@ const TaskRow = React.memo(function TaskRow({ task, theme, platforms, kpis, onCo
         ) : (
           <div className="flex items-center justify-between md:justify-end w-full gap-4">
             {task.link ? (
-              <a href={task.link} target="_blank" rel="noreferrer" className={`text-xs font-semibold hover:underline truncate max-w-[180px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${theme==='dark'?'text-blue-400 bg-blue-500/10 border-blue-500/20':'text-blue-600 bg-blue-50 border-blue-100'}`}><Paperclip size={14} className="shrink-0"/> <span className="truncate">{task.link}</span></a>
+              <a href={task.link} target="_blank" rel="noreferrer" className={`text-base md:text-sm font-semibold hover:underline truncate max-w-[180px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${theme==='dark'?'text-blue-400 bg-blue-500/10 border-blue-500/20':'text-blue-600 bg-blue-50 border-blue-100'}`}><Paperclip size={14} className="shrink-0"/> <span className="truncate">{task.link}</span></a>
             ) : (
-              <span className="text-xs font-medium text-slate-400 italic">Сдано без ссылки</span>
+              <span className="text-base md:text-sm font-medium text-slate-400 italic">Сдано без ссылки</span>
             )}
             <div className="flex gap-1.5 shrink-0">
                <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-500 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
@@ -1339,10 +1456,10 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
   }, [currentMonth, platforms]);
 
   const handleSave = async () => {
-    if(isSubmitting || !data.title.trim()) return;
+    if(isSubmitting || !(data.title || '').trim()) return;
     setIsSubmitting(true);
     try {
-      const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
+      const success = await onSave({ ...data, title: data.title.trim(), text: (data.text || '').trim() });
       if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
     } finally {
       setIsSubmitting(false);
@@ -1354,25 +1471,25 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
   return (
     <tr className={`border-b border-slate-100 dark:border-slate-800 ${theme==='dark'?'bg-slate-900/50':'bg-slate-50/50'}`}>
       <td className="p-3 align-top">
-        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700':'border-slate-200'}`}/>
+        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700':'border-slate-200'}`}/>
       </td>
       <td className="p-3 space-y-2.5 align-top">
-        <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-200':'border-slate-200 text-slate-800'}`}>
+        <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-200':'border-slate-200 text-slate-800'}`}>
           {platforms.map(p => <option key={p.id} value={p.id} className="dark:bg-slate-800">{p.name}</option>)}
         </select>
         {availableKpis.length > 0 && (
-          <select value={data.kpiIds[0] || ''} onChange={e=>setData({...data, kpiIds: e.target.value ? [e.target.value] : []})} className={`w-full px-3 py-2 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-400':'border-slate-200 text-slate-600'}`}>
+          <select value={data.kpiIds[0] || ''} onChange={e=>setData({...data, kpiIds: e.target.value ? [e.target.value] : []})} className={`w-full px-3 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-400':'border-slate-200 text-slate-600'}`}>
             <option value="">-- Формат контента --</option>
             {availableKpis.map(k => <option key={k.id} value={k.id} className="dark:bg-slate-800">{k.title}</option>)}
           </select>
         )}
       </td>
       <td className="p-3 align-top">
-        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2 text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent mb-2.5 ${theme==='dark'?'border-slate-700 placeholder-slate-500':'border-slate-200'}`}/>
-        <textarea rows="1" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} onKeyDown={e=>{if(e.key==='Enter' && e.ctrlKey)handleSave()}} className={`w-full px-4 py-2 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-700 placeholder-slate-600':'border-slate-200'}`}/>
+        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2 text-base md:text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent mb-2.5 ${theme==='dark'?'border-slate-700 placeholder-slate-500':'border-slate-200'}`}/>
+        <textarea rows="1" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} onKeyDown={e=>{if(e.key==='Enter' && e.ctrlKey)handleSave()}} className={`w-full px-4 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-700 placeholder-slate-600':'border-slate-200'}`}/>
       </td>
       <td className="p-3 text-right align-top">
-         <button onClick={handleSave} disabled={!data.title.trim() || isSubmitting} className="w-full py-2.5 bg-red-600 text-white text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
+         <button onClick={handleSave} disabled={!(data.title || '').trim() || isSubmitting} className="w-full py-2.5 bg-red-600 text-white text-base md:text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
       </td>
     </tr>
   )
@@ -1387,10 +1504,10 @@ function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) 
   }, [currentMonth, platforms]);
 
   const handleSave = async () => {
-    if (isSubmitting || !data.title.trim()) return;
+    if (isSubmitting || !(data.title || '').trim()) return;
     setIsSubmitting(true);
     try {
-      const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
+      const success = await onSave({ ...data, title: data.title.trim(), text: (data.text || '').trim() });
       if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
     } finally {
       setIsSubmitting(false);
@@ -1403,26 +1520,35 @@ function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) 
     <div className={`p-4 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
       <div className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Быстро добавить в план</div>
       <div className="grid grid-cols-1 gap-3">
-        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700':'border-slate-200'}`}/>
-        <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-200':'border-slate-200 text-slate-800'}`}>
+        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700':'border-slate-200'}`}/>
+        <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-200':'border-slate-200 text-slate-800'}`}>
           {platforms.map(p => <option key={p.id} value={p.id} className="dark:bg-slate-800">{p.name}</option>)}
         </select>
         {availableKpis.length > 0 && (
-          <select value={data.kpiIds[0] || ''} onChange={e=>setData({...data, kpiIds: e.target.value ? [e.target.value] : []})} className={`w-full px-3 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-400':'border-slate-200 text-slate-600'}`}>
+          <select value={data.kpiIds[0] || ''} onChange={e=>setData({...data, kpiIds: e.target.value ? [e.target.value] : []})} className={`w-full px-3 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-400':'border-slate-200 text-slate-600'}`}>
             <option value="">-- Формат контента --</option>
             {availableKpis.map(k => <option key={k.id} value={k.id} className="dark:bg-slate-800">{k.title}</option>)}
           </select>
         )}
-        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2.5 text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 placeholder-slate-500':'border-slate-200'}`}/>
-        <textarea rows="2" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-700 placeholder-slate-600':'border-slate-200'}`}/>
-        <button onClick={handleSave} disabled={!data.title.trim() || isSubmitting} className="w-full py-3 bg-red-600 text-white text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
+        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2.5 text-base md:text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 placeholder-slate-500':'border-slate-200'}`}/>
+        <textarea rows="2" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-700 placeholder-slate-600':'border-slate-200'}`}/>
+        <button onClick={handleSave} disabled={!(data.title || '').trim() || isSubmitting} className="w-full py-3 bg-red-600 text-white text-base md:text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
       </div>
     </div>
   )
 }
 
 function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
-  const [formData, setFormData] = useState(task || { title: '', text: '', date: getLocalISODate(), platformId: platforms[0]?.id || '', kpiIds: [], link: '' });
+  const [formData, setFormData] = useState(() => ({
+    id: task?.id,
+    title: task?.title || '',
+    text: task?.text || '',
+    date: task?.date || getLocalISODate(),
+    platformId: task?.platformId || platforms[0]?.id || '',
+    kpiIds: task?.kpiIds || [],
+    link: task?.link || ''
+  }));
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePlatformChange = (e) => {
@@ -1440,34 +1566,34 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
   const availableKpis = kpis.filter(k => k.platformId === formData.platformId);
 
   const handleSubmit = async () => {
-    if (isSubmitting || !formData.title.trim()) return;
+    if (isSubmitting || !(formData.title || '').trim()) return;
     setIsSubmitting(true);
     try {
-      await onSave({ ...formData, title: formData.title.trim(), text: (formData.text || '').trim(), link: (formData.link || '').trim() });
+      await onSave({ ...formData, title: (formData.title || '').trim(), text: (formData.text || '').trim(), link: (formData.link || '').trim() });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Modal title={task?.id ? 'Редактировать задачу' : 'Новая задача'} onClose={onClose}>
+    <Modal title={formData.id ? 'Редактировать задачу' : 'Новая задача'} onClose={onClose}>
       <div className="space-y-5">
         <div>
           <label className="block text-xs font-semibold mb-2">Название / Тема</label>
-          <input type="text" placeholder="Например: Съемка Reels с обзором" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+          <input type="text" placeholder="Например: Съемка Reels с обзором" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
         </div>
         <div>
           <label className="block text-xs font-semibold mb-2">Текст / Сценарий</label>
-          <textarea rows="2" placeholder="Опишите задачу..." value={formData.text} onChange={e => setFormData({...formData, text: e.target.value})} className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 resize-none font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+          <textarea rows="2" placeholder="Опишите задачу..." value={formData.text} onChange={e => setFormData({...formData, text: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 resize-none font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold mb-2">Дата</label>
-            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
           </div>
           <div>
             <label className="block text-xs font-semibold mb-2">Платформа</label>
-            <select value={formData.platformId} onChange={handlePlatformChange} className={`w-full px-4 py-2.5 text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
+            <select value={formData.platformId} onChange={handlePlatformChange} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
               {platforms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
@@ -1478,7 +1604,7 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
             Форматы контента
             <span className="text-[10px] font-medium text-slate-400 mt-1">Выберите один или несколько форматов</span>
           </label>
-          <div className={`border rounded-2xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-slate-50/50 border-slate-100'}`}>
+          <div className={`border rounded-2xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-slate-50/50 border-slate-100'}`}>
             {availableKpis.length === 0 ? <p className="text-xs text-slate-400 font-medium text-center py-4 sm:col-span-2">Нет форматов</p> : null}
             {availableKpis.map(k => {
                const colorClass = getFormatColor(k);
@@ -1488,14 +1614,14 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
                     {formData.kpiIds?.includes(k.id) && <CheckCircle2 size={12} strokeWidth={2.5} className="text-white"/>}
                   </div>
                   <div className={`w-2.5 h-2.5 rounded-full ${colorClass.bg}`}></div>
-                  <span className="text-sm font-medium select-none">{k.title}</span>
+                  <span className="text-base md:text-sm font-medium select-none">{k.title}</span>
                 </label>
               )
             })}
           </div>
         </div>
 
-        <button onClick={handleSubmit} disabled={!formData.title.trim() || isSubmitting} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl disabled:opacity-50 mt-4 transition-transform active:scale-95 shadow-sm text-sm">
+        <button onClick={handleSubmit} disabled={!(formData.title || '').trim() || isSubmitting} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl disabled:opacity-50 mt-4 transition-transform active:scale-95 shadow-sm text-sm">
           {isSubmitting ? 'Сохранение...' : 'Сохранить задачу'}
         </button>
       </div>
@@ -1503,7 +1629,7 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
   );
 }
 
-function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick }) {
+function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick, onDropTask }) {
   const daysInMonth = new Date(currentMonth.split('-')[0], currentMonth.split('-')[1], 0).getDate();
   const firstDay = new Date(currentMonth.split('-')[0], currentMonth.split('-')[1] - 1, 1).getDay();
   const startOffset = firstDay === 0 ? 6 : firstDay - 1; 
@@ -1553,7 +1679,13 @@ function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick }) {
           const hasTasks = dayTasks.length > 0;
           
           return (
-            <div key={dayNum} onClick={() => onDayClick(dateStr, dayTasks)} className={`aspect-square rounded-2xl border relative p-2 sm:p-3 cursor-pointer transition-all flex flex-col justify-between hover:shadow-md active:scale-95 ${hasTasks ? (theme==='dark'?'bg-slate-800 border-slate-700 hover:border-slate-500':'bg-white border-slate-200 hover:border-slate-300 shadow-sm') : (theme==='dark'?'bg-slate-900/50 border-dashed border-slate-800 hover:border-slate-600':'bg-slate-50/50 border-dashed border-slate-200 hover:border-slate-300')}`}>
+            <div 
+              key={dayNum} 
+              onClick={() => onDayClick(dateStr, dayTasks)} 
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); onDropTask(dateStr); }}
+              className={`aspect-square rounded-2xl border relative p-2 sm:p-3 cursor-pointer transition-all flex flex-col justify-between hover:shadow-md active:scale-95 ${hasTasks ? (theme==='dark'?'bg-slate-800 border-slate-700 hover:border-slate-500':'bg-white border-slate-200 hover:border-slate-300 shadow-sm') : (theme==='dark'?'bg-slate-900/50 border-dashed border-slate-800 hover:border-slate-600':'bg-slate-50/50 border-dashed border-slate-200 hover:border-slate-300')}`}
+            >
               <span className={`text-sm sm:text-base font-semibold ${hasTasks ? (theme==='dark'?'text-white':'text-slate-800') : 'text-slate-400'}`}>{dayNum}</span>
               {hasTasks && (
                 <div className="mt-auto">
@@ -1598,7 +1730,7 @@ function AnalyticsInputForm({ onSave, currentData, theme }) {
         ].map(f => (
           <div key={f.id}>
             <label className="block text-xs font-semibold mb-2 flex items-center gap-1.5 text-slate-700 dark:text-slate-300"><f.icon size={16}/> {f.label}</label>
-            <input type="number" value={data[f.id]} onChange={e=>setData({...data, [f.id]: e.target.value})} className={`w-full px-4 py-2.5 border rounded-xl outline-none focus:border-red-600 font-medium text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            <input type="number" value={data[f.id]} onChange={e=>setData({...data, [f.id]: e.target.value})} className={`w-full px-4 py-2.5 border rounded-xl outline-none focus:border-red-600 font-medium text-base md:text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
           </div>
         ))}
       </div>
@@ -1608,7 +1740,7 @@ function AnalyticsInputForm({ onSave, currentData, theme }) {
       </div>
       <div>
         <label className="block text-xs font-semibold mb-2">Выводы и инсайты</label>
-        <textarea rows="4" placeholder="Краткое резюме проделанной работы..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-3 border rounded-xl outline-none focus:border-red-600 resize-none font-medium text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+        <textarea rows="4" placeholder="Краткое резюме проделанной работы..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-3 border rounded-xl outline-none focus:border-red-600 resize-none font-medium text-base md:text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
       </div>
       <button onClick={() => { if(!data.reach) return alert('Введите охват'); onSave({...data, er}); }} className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm shadow-red-600/20 flex items-center justify-center gap-2 transition-transform active:scale-95 w-full sm:w-auto text-sm"><Lock size={16}/> Отправить отчет</button>
     </div>
@@ -1723,7 +1855,7 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
         </div>
       </div>
 
-      <div className="mb-10">
+      <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
         <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><BarChart3 size={22} className="text-red-600"/> Ключевые показатели</h2>
         <div className="grid grid-cols-4 gap-5">
           <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Подписчики</div><div className="text-3xl font-bold text-slate-900">{data.followers}</div></div>
@@ -1733,13 +1865,13 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
         </div>
       </div>
 
-      <div className="mb-10 break-inside-avoid">
+      <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
         <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><BarChart3 size={22} className="text-purple-600"/> Сравнение за 3 месяца</h2>
         <div className="border border-slate-200 rounded-2xl p-5 bg-white">
-          <div className="grid grid-cols-3 gap-5 h-56 items-end">
+          <div className="grid grid-cols-3 gap-5 h-64 items-end">
             {comparisonData.map(item => (
               <div key={item.name} className="h-full flex flex-col justify-end">
-                <div className="flex items-end justify-center gap-3 h-36 border-b border-slate-200 pb-0">
+                <div className="flex items-end justify-center gap-3 h-40 border-b border-slate-200 pb-0">
                   <div className={`w-10 rounded-t-lg ${item.hasData ? 'bg-red-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.reach / maxReach) * 100)}%` : '8px' }}></div>
                   <div className={`w-10 rounded-t-lg ${item.hasData ? 'bg-blue-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.followers / maxFollowers) * 100)}%` : '8px' }}></div>
                 </div>
@@ -1758,7 +1890,7 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
         </div>
       </div>
 
-      <div className="mb-10 break-inside-avoid">
+      <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
         <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><CheckSquare size={22} className="text-blue-600"/> Выполнение планов (KPI)</h2>
         <div className="grid grid-cols-2 gap-5">
           {kpiProgress.map(kpi => (
@@ -1777,7 +1909,7 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
       </div>
       
       {data.text && (
-        <div className="break-inside-avoid mt-8">
+        <div className="mt-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText size={22} className="text-green-600"/> Резюме специалиста</h2>
           <div className="text-slate-700 text-base font-medium leading-relaxed bg-slate-50 p-6 border border-slate-200 rounded-2xl italic">"{data.text}"</div>
         </div>
@@ -1823,7 +1955,7 @@ function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis }
                     </td>
                     <td className="border border-slate-200 p-3 align-top">
                       <div className="font-semibold text-slate-900 mb-1.5">{task.title}</div>
-                      <div className="text-xs text-slate-600 font-medium">{task.text}</div>
+                      <div className="text-xs text-slate-600 font-medium"><LinkifiedText text={task.text} /></div>
                     </td>
                     <td className="border border-slate-200 p-3 align-top text-center font-semibold text-xs">
                       {task.status === 'completed' ? <span className="text-green-600 bg-green-50 px-2 py-1 rounded">Готово</span> : <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded">В плане</span>}
