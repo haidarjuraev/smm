@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
   CheckCircle2, Clock, AlertCircle, Paperclip, 
   BarChart3, LogOut, Plus, Trash2, Edit2, Download, 
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v13-all-fields-2026-06-13';
+const APP_VERSION = 'd1-sync-v14-mobile-pdf-fix-2026-06-13';
 
 const Instagram = Globe;
 const Facebook = Users;
@@ -142,90 +142,6 @@ const AppLogo = ({ settings, size = 24, className = "text-red-600" }) => {
   return <TrendingUp size={size} className={className} strokeWidth={2.5} />;
 };
 
-const THEME_TRANSITION_STYLE_ID = 'pokiza-theme-transition-style';
-
-const ensureThemeTransitionStyles = () => {
-  if (typeof document === 'undefined' || document.getElementById(THEME_TRANSITION_STYLE_ID)) return;
-
-  const style = document.createElement('style');
-  style.id = THEME_TRANSITION_STYLE_ID;
-  style.textContent = String.raw`
-    html, body, #root {
-      min-height: 100%;
-      background-color: #FAFAFA;
-    }
-
-    html.dark, html.dark body, html.dark #root {
-      background-color: #0f172a;
-    }
-
-    html {
-      color-scheme: light;
-    }
-
-    html.dark {
-      color-scheme: dark;
-    }
-
-    html.dark .dark\:bg-white { background-color: #ffffff !important; }
-    html.dark .dark\:bg-slate-100 { background-color: #f1f5f9 !important; }
-    html.dark .dark\:bg-slate-700 { background-color: #334155 !important; }
-    html.dark .dark\:bg-slate-700\/50 { background-color: rgba(51, 65, 85, 0.5) !important; }
-    html.dark .dark\:bg-slate-800 { background-color: #1e293b !important; }
-    html.dark .dark\:bg-slate-800\/50 { background-color: rgba(30, 41, 59, 0.5) !important; }
-    html.dark .dark\:bg-slate-900 { background-color: #0f172a !important; }
-    html.dark .dark\:bg-slate-900\/50 { background-color: rgba(15, 23, 42, 0.5) !important; }
-    html.dark .dark\:bg-slate-900\/80 { background-color: rgba(15, 23, 42, 0.8) !important; }
-    html.dark .dark\:bg-red-500\/10 { background-color: rgba(239, 68, 68, 0.1) !important; }
-    html.dark .dark\:bg-blue-500\/10 { background-color: rgba(59, 130, 246, 0.1) !important; }
-
-    html.dark .dark\:border-white { border-color: #ffffff !important; }
-    html.dark .dark\:border-slate-500 { border-color: #64748b !important; }
-    html.dark .dark\:border-slate-600 { border-color: #475569 !important; }
-    html.dark .dark\:border-slate-700 { border-color: #334155 !important; }
-    html.dark .dark\:border-slate-900 { border-color: #0f172a !important; }
-    html.dark .dark\:border-red-500 { border-color: #ef4444 !important; }
-    html.dark .dark\:border-blue-500\/20 { border-color: rgba(59, 130, 246, 0.2) !important; }
-
-    html.dark .dark\:text-white { color: #ffffff !important; }
-    html.dark .dark\:text-slate-100 { color: #f1f5f9 !important; }
-    html.dark .dark\:text-slate-200 { color: #e2e8f0 !important; }
-    html.dark .dark\:text-slate-300 { color: #cbd5e1 !important; }
-    html.dark .dark\:text-slate-400 { color: #94a3b8 !important; }
-    html.dark .dark\:text-slate-500 { color: #64748b !important; }
-    html.dark .dark\:text-slate-600 { color: #475569 !important; }
-    html.dark .dark\:text-slate-900 { color: #0f172a !important; }
-    html.dark .dark\:text-red-400 { color: #f87171 !important; }
-    html.dark .dark\:text-blue-400 { color: #60a5fa !important; }
-
-    html.dark .dark\:hover\:bg-slate-600:hover { background-color: #475569 !important; }
-    html.dark .dark\:hover\:bg-slate-700:hover { background-color: #334155 !important; }
-    html.dark .dark\:hover\:bg-slate-700\/50:hover { background-color: rgba(51, 65, 85, 0.5) !important; }
-    html.dark .dark\:hover\:bg-red-500\/10:hover { background-color: rgba(239, 68, 68, 0.1) !important; }
-    html.dark .dark\:hover\:bg-red-500\/20:hover { background-color: rgba(239, 68, 68, 0.2) !important; }
-    html.dark .dark\:hover\:text-white:hover { color: #ffffff !important; }
-    html.dark .dark\:hover\:text-blue-300:hover { color: #93c5fd !important; }
-    html.dark .group:hover .dark\:group-hover\:text-slate-200 { color: #e2e8f0 !important; }
-
-    html.theme-transition *,
-    html.theme-transition *::before,
-    html.theme-transition *::after {
-      transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, box-shadow, opacity, transform !important;
-      transition-duration: 280ms !important;
-      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      html.theme-transition *,
-      html.theme-transition *::before,
-      html.theme-transition *::after {
-        transition-duration: 0ms !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-};
-
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -270,26 +186,7 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
 }
 
 export default function AppWrapper() {
-  const [theme, setThemeState] = useState(() => {
-    try {
-      const savedTheme = localStorage.getItem('pokiza_theme');
-      return savedTheme === 'dark' ? 'dark' : 'light';
-    } catch { return 'light'; }
-  });
-
-  const setTheme = useCallback((nextTheme) => {
-    const root = typeof document !== 'undefined' ? document.documentElement : null;
-    root?.classList.add('theme-transition');
-
-    setThemeState(currentTheme => {
-      const resolvedTheme = typeof nextTheme === 'function' ? nextTheme(currentTheme) : nextTheme;
-      return resolvedTheme === 'dark' ? 'dark' : 'light';
-    });
-
-    setTimeout(() => {
-      root?.classList.remove('theme-transition');
-    }, 320);
-  }, []);
+  const [theme, setTheme] = useState('light');
   const [appSettings, setAppSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('pokiza_settings');
@@ -336,32 +233,10 @@ export default function AppWrapper() {
     loadUsersAndSettings();
   }, []);
 
-  useLayoutEffect(() => {
-    ensureThemeTransitionStyles();
-
-    const isDark = theme === 'dark';
-    const pageBg = isDark ? '#0f172a' : '#FAFAFA';
-    const rootEl = document.documentElement;
-    const appRoot = document.getElementById('root');
-
-    rootEl.classList.toggle('dark', isDark);
-    rootEl.dataset.theme = theme;
-    rootEl.style.height = '100%';
-    rootEl.style.backgroundColor = pageBg;
-    rootEl.style.colorScheme = isDark ? 'dark' : 'light';
-
-    document.body.classList.toggle('dark', isDark);
+  useEffect(() => {
+    document.documentElement.style.height = '100%';
     document.body.style.height = '100%';
-    document.body.style.backgroundColor = pageBg;
-
-    if (appRoot) {
-      appRoot.style.minHeight = '100%';
-      appRoot.style.backgroundColor = pageBg;
-    }
-
-    try {
-      localStorage.setItem('pokiza_theme', theme);
-    } catch {}
+    document.body.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#FAFAFA';
 
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
@@ -384,8 +259,8 @@ export default function AppWrapper() {
           name: appSettings.appName || "Pokiza SMM",
           short_name: appSettings.appName || "Pokiza",
           display: "standalone",
-          background_color: theme === 'dark' ? "#0f172a" : "#FAFAFA",
-          theme_color: theme === 'dark' ? "#0f172a" : "#FAFAFA",
+          background_color: "#FAFAFA",
+          theme_color: "#FAFAFA",
           icons: [{ src: "https://cdn-icons-png.flaticon.com/512/3254/3254068.png", sizes: "512x512", type: "image/png" }]
        };
        const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
@@ -422,7 +297,7 @@ function LoginScreen({ usersDb, onLogin, theme, appSettings }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-300">
       <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm w-full max-w-sm border border-slate-100 dark:border-slate-700 transition-colors duration-300">
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl mx-auto flex items-center justify-center mb-4 overflow-hidden">
@@ -464,6 +339,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
   
   const [printMode, setPrintMode] = useState(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [pdfFileName, setPdfFileName] = useState('Pokiza_Report.pdf');
   
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
@@ -583,66 +459,103 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
   }, [analytics, currentMonth]);
 
   const handlePdfAction = useCallback(async (mode, actionType = 'download') => {
-    showToast(actionType === 'preview' ? 'Генерация предпросмотра...' : 'Подготовка отчета...', 'success');
+    const fileName = `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`;
+    const isPreview = actionType === 'preview';
+    setPdfFileName(fileName);
+    setPdfPreviewUrl(null);
+    showToast(isPreview ? 'Генерация предпросмотра...' : 'Подготовка PDF...', 'success');
+
+    if (isPreview) {
+      setActiveModal('pdfPreview');
+    }
+
     setPrintMode(mode);
-    
-    if (actionType === 'preview') {
-       setPdfPreviewUrl(null);
-       setActiveModal('pdfPreview');
-    }
+    await new Promise(resolve => setTimeout(resolve, 450));
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
     const element = document.getElementById('pdf-content-wrapper');
-    if(!element) {
-        showToast('Ошибка: Не удалось найти контент для PDF', 'error');
-        setPrintMode(null);
-        return;
+    if (!element) {
+      showToast('Ошибка: Не удалось найти контент для PDF', 'error');
+      setPrintMode(null);
+      return;
     }
 
-    const processPdf = () => {
+    const processPdf = async () => {
       try {
         const isLandscape = mode === 'plan';
-        const scale = window.innerWidth < 768 ? 1.5 : 2;
-        const forcedWidth = isLandscape ? 1100 : 790; 
+        const forcedWidth = isLandscape ? 1100 : 790;
+        const scale = window.innerWidth < 768 ? 1.4 : 2;
 
         const opt = {
-          margin:       [10, 10, 10, 10],
-          filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
-          image:        { type: 'jpeg', quality: 0.95 },
-          html2canvas:  { 
-            scale: scale, 
-            useCORS: true, 
-            logging: false, 
+          margin: [10, 10, 10, 10],
+          filename: fileName,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: {
+            scale,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
             windowWidth: forcedWidth,
-            width: forcedWidth
+            width: forcedWidth,
+            scrollX: 0,
+            scrollY: 0
           },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
+          jsPDF: { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
         };
-        
-        if (actionType === 'preview') {
-           window.html2pdf().set(opt).from(element).outputPdf('blob').then((blob) => {
-               const url = URL.createObjectURL(blob);
-               setPdfPreviewUrl(url);
-               setPrintMode(null);
-           }).catch(err => {
-               console.error('PDF Preview Error:', err);
-               showToast('Ошибка при создании превью', 'error');
-               setPrintMode(null);
-           });
+
+        const blob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
+        const url = URL.createObjectURL(blob);
+        setPdfPreviewUrl(url);
+        setPrintMode(null);
+
+        if (isPreview) {
+          showToast('PDF готов к просмотру');
+          return;
+        }
+
+        const file = typeof File !== 'undefined' ? new File([blob], fileName, { type: 'application/pdf' }) : null;
+        const canShareFile = Boolean(
+          file &&
+          navigator.share &&
+          navigator.canShare &&
+          navigator.canShare({ files: [file] })
+        );
+
+        if (canShareFile) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: fileName,
+              text: 'PDF отчет Pokiza SMM'
+            });
+            showToast('PDF готов для сохранения или отправки');
+            return;
+          } catch (shareError) {
+            if (shareError?.name === 'AbortError') {
+              showToast('Отправка отменена', 'error');
+              return;
+            }
+            console.warn('Share failed, fallback to download:', shareError);
+          }
+        }
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+        if (isMobile) {
+          setActiveModal('pdfPreview');
+          showToast('PDF готов. Нажмите «Скачать PDF» или откройте меню браузера, чтобы поделиться.');
         } else {
-           window.html2pdf().set(opt).from(element).save().then(() => {
-               showToast('Файл успешно скачан', 'success');
-               setPrintMode(null);
-           }).catch(err => {
-               console.error('PDF Download Error:', err);
-               showToast('Ошибка при сохранении PDF', 'error');
-               setPrintMode(null);
-           });
+          showToast('Файл успешно скачан');
         }
       } catch (err) {
-        console.error('PDF Generator Crash:', err);
-        showToast('Критическая ошибка генератора PDF', 'error');
+        console.error('PDF Generator Error:', err);
+        showToast('Ошибка при создании PDF', 'error');
         setPrintMode(null);
       }
     };
@@ -654,8 +567,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = processPdf;
       script.onerror = () => {
-         showToast('Не удалось загрузить библиотеку для PDF', 'error');
-         setPrintMode(null);
+        showToast('Не удалось загрузить библиотеку для PDF', 'error');
+        setPrintMode(null);
       };
       document.body.appendChild(script);
     }
@@ -1414,7 +1327,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
               ))}
               
               <div className="relative -top-5 z-50">
-                 <button onClick={() => { setEditingItem({ title: '', date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-slate-900">
+                 <button type="button" aria-label="Добавить задачу" onClick={() => { setActiveTab('content-plan'); setEditingItem({ title: '', text: '', date: `${currentMonth}-01`, platformId: platforms[0]?.id || '', kpiIds: [], link: '' }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-slate-900">
                     <Plus size={28} strokeWidth={2.5} />
                  </button>
               </div>
@@ -1442,7 +1355,21 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
           )}
           <div className="mt-5 flex flex-col sm:flex-row justify-end gap-3">
              <button onClick={() => {setActiveModal(null); setPdfPreviewUrl(null);}} className="px-5 py-2.5 rounded-xl border font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 dark:border-slate-600 transition-colors text-sm active:scale-95">Закрыть</button>
-             {pdfPreviewUrl && <a href={pdfPreviewUrl} download={`Pokiza_Report_${currentMonth}.pdf`} className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-center shadow-sm active:scale-95 transition-transform text-sm">Скачать PDF</a>}
+             {pdfPreviewUrl && navigator.share && <button onClick={async () => {
+               try {
+                 const res = await fetch(pdfPreviewUrl);
+                 const blob = await res.blob();
+                 const file = new File([blob], pdfFileName, { type: 'application/pdf' });
+                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                   await navigator.share({ files: [file], title: pdfFileName, text: 'PDF отчет Pokiza SMM' });
+                 } else {
+                   await navigator.share({ title: pdfFileName, url: pdfPreviewUrl });
+                 }
+               } catch (error) {
+                 showToast('Не удалось поделиться PDF', 'error');
+               }
+             }} className="px-6 py-2.5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold rounded-xl text-center shadow-sm active:scale-95 transition-transform text-sm">Поделиться</button>}
+             {pdfPreviewUrl && <a href={pdfPreviewUrl} download={pdfFileName} className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-center shadow-sm active:scale-95 transition-transform text-sm">Скачать PDF</a>}
           </div>
         </Modal>
       )}
@@ -1480,6 +1407,17 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
               }} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-transform">Сохранить изменения</button>
           </div>
         </Modal>
+      )}
+
+      {activeModal === 'addTask' && (
+        <TaskFormModal
+          task={editingItem}
+          kpis={kpis}
+          platforms={platforms}
+          theme={theme}
+          onSave={saveTask}
+          onClose={() => { setActiveModal(null); setEditingItem(null); }}
+        />
       )}
 
       {/* Модальное окно просмотра задачи */}
@@ -1921,10 +1859,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
     </div>
 
-    {/* Блок для генерации PDF: Используем opacity: 0 и абсолютное позиционирование для стабильности canvas */}
+    {/* Блок для генерации PDF: элемент должен быть видимым для html2canvas, поэтому прячем его за экран, а не через opacity/overflow */}
     {printMode && (
-      <div className="absolute top-0 left-0 w-0 h-0 z-[-100] overflow-hidden opacity-0 pointer-events-none">
-        <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 m-0" style={{ width: printMode === 'plan' ? '1100px' : '790px', position: 'absolute', top: 0, left: 0 }}>
+      <div style={{ position: 'fixed', left: '-10000px', top: 0, width: printMode === 'plan' ? '1100px' : '790px', background: '#ffffff', color: '#0f172a', pointerEvents: 'none', zIndex: -1 }}>
+        <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 m-0" style={{ width: printMode === 'plan' ? '1100px' : '790px', minHeight: '100px' }}>
           {printMode === 'analytics' && <AnalyticsPrintView data={pdfAnalyticsData} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} allData={analytics} months={MONTHS} appSettings={appSettings} />}
           {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} appSettings={appSettings} />}
         </div>
