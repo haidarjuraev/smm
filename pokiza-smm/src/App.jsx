@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { 
   CheckCircle2, Clock, AlertCircle, Paperclip, 
   BarChart3, LogOut, Plus, Trash2, Edit2, Download, 
@@ -142,6 +142,90 @@ const AppLogo = ({ settings, size = 24, className = "text-red-600" }) => {
   return <TrendingUp size={size} className={className} strokeWidth={2.5} />;
 };
 
+const THEME_TRANSITION_STYLE_ID = 'pokiza-theme-transition-style';
+
+const ensureThemeTransitionStyles = () => {
+  if (typeof document === 'undefined' || document.getElementById(THEME_TRANSITION_STYLE_ID)) return;
+
+  const style = document.createElement('style');
+  style.id = THEME_TRANSITION_STYLE_ID;
+  style.textContent = String.raw`
+    html, body, #root {
+      min-height: 100%;
+      background-color: #FAFAFA;
+    }
+
+    html.dark, html.dark body, html.dark #root {
+      background-color: #0f172a;
+    }
+
+    html {
+      color-scheme: light;
+    }
+
+    html.dark {
+      color-scheme: dark;
+    }
+
+    html.dark .dark\:bg-white { background-color: #ffffff !important; }
+    html.dark .dark\:bg-slate-100 { background-color: #f1f5f9 !important; }
+    html.dark .dark\:bg-slate-700 { background-color: #334155 !important; }
+    html.dark .dark\:bg-slate-700\/50 { background-color: rgba(51, 65, 85, 0.5) !important; }
+    html.dark .dark\:bg-slate-800 { background-color: #1e293b !important; }
+    html.dark .dark\:bg-slate-800\/50 { background-color: rgba(30, 41, 59, 0.5) !important; }
+    html.dark .dark\:bg-slate-900 { background-color: #0f172a !important; }
+    html.dark .dark\:bg-slate-900\/50 { background-color: rgba(15, 23, 42, 0.5) !important; }
+    html.dark .dark\:bg-slate-900\/80 { background-color: rgba(15, 23, 42, 0.8) !important; }
+    html.dark .dark\:bg-red-500\/10 { background-color: rgba(239, 68, 68, 0.1) !important; }
+    html.dark .dark\:bg-blue-500\/10 { background-color: rgba(59, 130, 246, 0.1) !important; }
+
+    html.dark .dark\:border-white { border-color: #ffffff !important; }
+    html.dark .dark\:border-slate-500 { border-color: #64748b !important; }
+    html.dark .dark\:border-slate-600 { border-color: #475569 !important; }
+    html.dark .dark\:border-slate-700 { border-color: #334155 !important; }
+    html.dark .dark\:border-slate-900 { border-color: #0f172a !important; }
+    html.dark .dark\:border-red-500 { border-color: #ef4444 !important; }
+    html.dark .dark\:border-blue-500\/20 { border-color: rgba(59, 130, 246, 0.2) !important; }
+
+    html.dark .dark\:text-white { color: #ffffff !important; }
+    html.dark .dark\:text-slate-100 { color: #f1f5f9 !important; }
+    html.dark .dark\:text-slate-200 { color: #e2e8f0 !important; }
+    html.dark .dark\:text-slate-300 { color: #cbd5e1 !important; }
+    html.dark .dark\:text-slate-400 { color: #94a3b8 !important; }
+    html.dark .dark\:text-slate-500 { color: #64748b !important; }
+    html.dark .dark\:text-slate-600 { color: #475569 !important; }
+    html.dark .dark\:text-slate-900 { color: #0f172a !important; }
+    html.dark .dark\:text-red-400 { color: #f87171 !important; }
+    html.dark .dark\:text-blue-400 { color: #60a5fa !important; }
+
+    html.dark .dark\:hover\:bg-slate-600:hover { background-color: #475569 !important; }
+    html.dark .dark\:hover\:bg-slate-700:hover { background-color: #334155 !important; }
+    html.dark .dark\:hover\:bg-slate-700\/50:hover { background-color: rgba(51, 65, 85, 0.5) !important; }
+    html.dark .dark\:hover\:bg-red-500\/10:hover { background-color: rgba(239, 68, 68, 0.1) !important; }
+    html.dark .dark\:hover\:bg-red-500\/20:hover { background-color: rgba(239, 68, 68, 0.2) !important; }
+    html.dark .dark\:hover\:text-white:hover { color: #ffffff !important; }
+    html.dark .dark\:hover\:text-blue-300:hover { color: #93c5fd !important; }
+    html.dark .group:hover .dark\:group-hover\:text-slate-200 { color: #e2e8f0 !important; }
+
+    html.theme-transition *,
+    html.theme-transition *::before,
+    html.theme-transition *::after {
+      transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, box-shadow, opacity, transform !important;
+      transition-duration: 280ms !important;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html.theme-transition *,
+      html.theme-transition *::before,
+      html.theme-transition *::after {
+        transition-duration: 0ms !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+};
+
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -186,7 +270,26 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
 }
 
 export default function AppWrapper() {
-  const [theme, setTheme] = useState('light');
+  const [theme, setThemeState] = useState(() => {
+    try {
+      const savedTheme = localStorage.getItem('pokiza_theme');
+      return savedTheme === 'dark' ? 'dark' : 'light';
+    } catch { return 'light'; }
+  });
+
+  const setTheme = useCallback((nextTheme) => {
+    const root = typeof document !== 'undefined' ? document.documentElement : null;
+    root?.classList.add('theme-transition');
+
+    setThemeState(currentTheme => {
+      const resolvedTheme = typeof nextTheme === 'function' ? nextTheme(currentTheme) : nextTheme;
+      return resolvedTheme === 'dark' ? 'dark' : 'light';
+    });
+
+    setTimeout(() => {
+      root?.classList.remove('theme-transition');
+    }, 320);
+  }, []);
   const [appSettings, setAppSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('pokiza_settings');
@@ -233,10 +336,32 @@ export default function AppWrapper() {
     loadUsersAndSettings();
   }, []);
 
-  useEffect(() => {
-    document.documentElement.style.height = '100%';
+  useLayoutEffect(() => {
+    ensureThemeTransitionStyles();
+
+    const isDark = theme === 'dark';
+    const pageBg = isDark ? '#0f172a' : '#FAFAFA';
+    const rootEl = document.documentElement;
+    const appRoot = document.getElementById('root');
+
+    rootEl.classList.toggle('dark', isDark);
+    rootEl.dataset.theme = theme;
+    rootEl.style.height = '100%';
+    rootEl.style.backgroundColor = pageBg;
+    rootEl.style.colorScheme = isDark ? 'dark' : 'light';
+
+    document.body.classList.toggle('dark', isDark);
     document.body.style.height = '100%';
-    document.body.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#FAFAFA';
+    document.body.style.backgroundColor = pageBg;
+
+    if (appRoot) {
+      appRoot.style.minHeight = '100%';
+      appRoot.style.backgroundColor = pageBg;
+    }
+
+    try {
+      localStorage.setItem('pokiza_theme', theme);
+    } catch {}
 
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
@@ -259,8 +384,8 @@ export default function AppWrapper() {
           name: appSettings.appName || "Pokiza SMM",
           short_name: appSettings.appName || "Pokiza",
           display: "standalone",
-          background_color: "#FAFAFA",
-          theme_color: "#FAFAFA",
+          background_color: theme === 'dark' ? "#0f172a" : "#FAFAFA",
+          theme_color: theme === 'dark' ? "#0f172a" : "#FAFAFA",
           icons: [{ src: "https://cdn-icons-png.flaticon.com/512/3254/3254068.png", sizes: "512x512", type: "image/png" }]
        };
        const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
@@ -297,7 +422,7 @@ function LoginScreen({ usersDb, onLogin, theme, appSettings }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-300">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm w-full max-w-sm border border-slate-100 dark:border-slate-700 transition-colors duration-300">
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl mx-auto flex items-center justify-center mb-4 overflow-hidden">
