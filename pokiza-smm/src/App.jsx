@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-mobile-ui-2026-06-13';
+const APP_VERSION = 'd1-sync-v8-2026-06-13';
 
 // lucide-react в текущей сборке не экспортирует эти brand icons.
 // Используем стабильные иконки, чтобы build не падал.
