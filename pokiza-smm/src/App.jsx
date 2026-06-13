@@ -734,84 +734,99 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     const fileName = `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`;
     showToast('Подготовка PDF...', 'success');
 
-    setPrintMode(mode);
-    await new Promise(resolve => setTimeout(resolve, 800)); // Даем DOM отрендериться
-
-    const element = document.getElementById('pdf-content-wrapper');
-    if (!element) {
-      showToast('Ошибка: Не удалось найти контент для PDF', 'error');
-      setPrintMode(null);
-      return;
-    }
-
-    const processPdf = async () => {
-      try {
-        const isLandscape = mode === 'plan';
-        const forcedWidth = isLandscape ? 1100 : 790;
-        const scale = window.innerWidth < 768 ? 1.4 : 2;
-
-        const opt = {
-          margin: [10, 10, 10, 10],
-          filename: fileName,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            windowWidth: forcedWidth,
-            width: forcedWidth,
-            scrollX: 0,
-            scrollY: 0
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
-        };
-
-        const blob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
-        setPrintMode(null);
-
-        const file = typeof File !== 'undefined' ? new File([blob], fileName, { type: 'application/pdf' }) : null;
-        
-        // Native Share on Mobile
-        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: fileName });
-            showToast('Успешно');
-            return;
-          } catch (shareError) {
-            console.warn('Share cancelled or failed', shareError);
-          }
-        }
-
-        // Standard Download
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        showToast('Файл скачан', 'success');
-
-      } catch (err) {
-        console.error('PDF Error:', err);
-        showToast('Критическая ошибка генератора', 'error');
-        setPrintMode(null);
+    const loadHtml2Pdf = () => new Promise((resolve, reject) => {
+      if (window.html2pdf) {
+        resolve(window.html2pdf);
+        return;
       }
-    };
 
-    if (window.html2pdf) {
-      processPdf();
-    } else {
+      const existingScript = document.querySelector('script[data-pokiza-html2pdf="true"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(window.html2pdf), { once: true });
+        existingScript.addEventListener('error', reject, { once: true });
+        return;
+      }
+
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = processPdf;
-      script.onerror = () => {
-        showToast('Не удалось загрузить генератор', 'error');
-        setPrintMode(null);
-      };
+      script.async = true;
+      script.dataset.pokizaHtml2pdf = 'true';
+      script.onload = () => resolve(window.html2pdf);
+      script.onerror = () => reject(new Error('Не удалось загрузить генератор PDF'));
       document.body.appendChild(script);
+    });
+
+    try {
+      setPrintMode(mode);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))));
+      await new Promise(resolve => setTimeout(resolve, 250));
+      await loadHtml2Pdf();
+
+      const element = document.getElementById('pdf-content-wrapper');
+      if (!element) throw new Error('Не удалось найти контент для PDF');
+
+      const isLandscape = mode === 'plan';
+      const forcedWidth = isLandscape ? 1100 : 790;
+      const scale = Math.min(2, Math.max(1.25, window.devicePixelRatio || 1.5));
+
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: forcedWidth,
+          width: forcedWidth,
+          scrollX: 0,
+          scrollY: 0,
+          removeContainer: true,
+          onclone: (clonedDocument) => {
+            const clonedElement = clonedDocument.getElementById('pdf-content-wrapper');
+            if (clonedElement) {
+              clonedElement.style.backgroundColor = '#ffffff';
+              clonedElement.style.color = '#0f172a';
+              clonedElement.style.fontFamily = 'Arial, Helvetica, sans-serif';
+            }
+          }
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      const blob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
+      if (!blob || !blob.size) throw new Error('PDF не был создан');
+
+      const file = typeof File !== 'undefined' ? new File([blob], fileName, { type: 'application/pdf' }) : null;
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
+      if (isMobile && file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: fileName });
+          showToast('Успешно');
+          return;
+        } catch (shareError) {
+          console.warn('Share cancelled or failed', shareError);
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('Файл скачан', 'success');
+    } catch (err) {
+      console.error('PDF Error:', err);
+      showToast(err instanceof Error ? err.message : 'Критическая ошибка генератора', 'error');
+    } finally {
+      setPrintMode(null);
     }
   }, [currentMonth, showToast]);
 
@@ -1966,8 +1981,32 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
     {/* Блок для генерации PDF */}
     {printMode && (
-      <div style={{ position: 'fixed', left: '-10000px', top: 0, width: printMode === 'plan' ? '1100px' : '790px', background: '#ffffff', color: '#0f172a', pointerEvents: 'none', zIndex: -1 }}>
-        <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 m-0" style={{ width: printMode === 'plan' ? '1100px' : '790px', minHeight: '100px' }}>
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: '-10000px',
+          top: 0,
+          width: printMode === 'plan' ? '1100px' : '790px',
+          backgroundColor: '#ffffff',
+          color: '#0f172a',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+      >
+        <div
+          id="pdf-content-wrapper"
+          style={{
+            width: printMode === 'plan' ? '1100px' : '790px',
+            minHeight: '100px',
+            padding: '40px',
+            margin: 0,
+            boxSizing: 'border-box',
+            backgroundColor: '#ffffff',
+            color: '#0f172a',
+            fontFamily: 'Arial, Helvetica, sans-serif'
+          }}
+        >
           {printMode === 'analytics' && <AnalyticsPrintView data={pdfAnalyticsData} currentMonth={getMonthLabel(currentMonth)} kpiProgress={kpiProgress} allData={analytics} months={timelineMonths} appSettings={appSettings} />}
           {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={getMonthLabel(currentMonth)} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} appSettings={appSettings} />}
         </div>
@@ -2429,10 +2468,43 @@ function AnalyticsDashboard({ data, prevData, theme, allData, months }) {
   );
 }
 
+const PDF_COLORS = {
+  ink: '#0f172a',
+  muted: '#475569',
+  soft: '#64748b',
+  line: '#e2e8f0',
+  panel: '#f8fafc',
+  red: '#dc2626',
+  redSoft: '#fef2f2',
+  blue: '#2563eb',
+  blueSoft: '#eff6ff',
+  green: '#16a34a',
+  greenSoft: '#f0fdf4',
+  amber: '#d97706',
+  amberSoft: '#fffbeb',
+  purple: '#7c3aed'
+} as const;
+
+function PdfBrandLogo({ appSettings, size = 24 }) {
+  if (appSettings?.logoUrl) {
+    return (
+      <img
+        src={appSettings.logoUrl}
+        alt="Logo"
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
+        style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }}
+      />
+    );
+  }
+  return <TrendingUp size={size} style={{ color: PDF_COLORS.red, flexShrink: 0 }} strokeWidth={2.5} />;
+}
+
 function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, appSettings }) {
   const comparisonData = (months || []).map(m => {
     const d = allData?.[m.value];
     return {
+      value: m.value,
       name: m.label.split(' ')[0],
       followers: d?.isSubmitted ? Number(d.followers) || 0 : 0,
       reach: d?.isSubmitted ? Number(d.reach) || 0 : 0,
@@ -2441,78 +2513,96 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, 
   });
   const maxReach = Math.max(1, ...comparisonData.map(d => d.reach));
   const maxFollowers = Math.max(1, ...comparisonData.map(d => d.followers));
+  const interactions = Number(data.likes || 0) + Number(data.comments || 0);
+  const statCards = [
+    { label: 'Подписчики', value: data.followers || 0, accent: PDF_COLORS.ink, bg: PDF_COLORS.panel, border: PDF_COLORS.line },
+    { label: 'Охват', value: data.reach || 0, accent: PDF_COLORS.ink, bg: PDF_COLORS.panel, border: PDF_COLORS.line },
+    { label: 'Взаимодействия', value: interactions, accent: PDF_COLORS.ink, bg: PDF_COLORS.panel, border: PDF_COLORS.line },
+    { label: 'ER (Вовлеченность)', value: `${data.er || 0}%`, accent: PDF_COLORS.red, bg: PDF_COLORS.redSoft, border: '#fecaca' },
+  ];
 
   return (
-    <div className="w-[710px] mx-auto font-sans bg-white text-slate-900">
-      <div className="border-b-[3px] border-red-600 pb-4 mb-6 flex justify-between items-end">
+    <div style={{ width: 710, margin: '0 auto', backgroundColor: '#ffffff', color: PDF_COLORS.ink, fontFamily: 'Arial, Helvetica, sans-serif', boxSizing: 'border-box' }}>
+      <div style={{ borderBottom: `3px solid ${PDF_COLORS.red}`, paddingBottom: 16, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h1 className="text-2xl font-bold text-red-600 uppercase tracking-wider mb-1 flex items-center gap-3">
-             <AppLogo settings={appSettings} size={24} /> 
-             {appSettings?.appName || 'ПОКИЗА'}
-          </h1>
-          <p className="text-sm text-slate-600 font-medium">Аналитический отчет • {currentMonth}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: PDF_COLORS.red, fontSize: 24, lineHeight: 1.15, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
+            <PdfBrandLogo appSettings={appSettings} size={24} />
+            <span>{appSettings?.appName || 'ПОКИЗА'}</span>
+          </div>
+          <div style={{ color: PDF_COLORS.muted, fontSize: 13, fontWeight: 600 }}>Аналитический отчет • {currentMonth}</div>
         </div>
-        <div className="text-right">
-           <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата создания</div>
-           <div className="text-xs font-medium">{new Date().toLocaleDateString('ru-RU')}</div>
-        </div>
-      </div>
-
-      <div className="mb-6 break-inside-avoid">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600"/> Ключевые показатели</h2>
-        <div className="grid grid-cols-4 gap-3">
-          <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Подписчики</div><div className="text-2xl font-bold text-slate-900">{data.followers || 0}</div></div>
-          <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Охват</div><div className="text-2xl font-bold text-slate-900">{data.reach || 0}</div></div>
-          <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Взаимодействия</div><div className="text-2xl font-bold text-slate-900">{Number(data.likes || 0) + Number(data.comments || 0)}</div></div>
-          <div className="p-4 border border-red-100 rounded-2xl bg-red-50"><div className="text-[10px] text-red-600 uppercase font-semibold tracking-wider mb-1.5">ER (Вовлеченность)</div><div className="text-2xl font-bold text-red-600">{data.er || 0}%</div></div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: PDF_COLORS.soft, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Дата создания</div>
+          <div style={{ color: PDF_COLORS.ink, fontSize: 12, fontWeight: 600 }}>{new Date().toLocaleDateString('ru-RU')}</div>
         </div>
       </div>
 
-      <div className="mb-6 break-inside-avoid">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-purple-600"/> Динамика за 12 месяцев</h2>
-        <div className="border border-slate-200 rounded-2xl p-5 bg-white">
-          <div className="flex items-end justify-between h-40 border-b border-slate-200 pb-2 gap-1.5">
+      <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
+          <BarChart3 size={18} style={{ color: PDF_COLORS.red }} />
+          <span>Ключевые показатели</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {statCards.map(card => (
+            <div key={card.label} style={{ padding: 16, border: `1px solid ${card.border}`, borderRadius: 16, backgroundColor: card.bg }}>
+              <div style={{ color: card.accent === PDF_COLORS.red ? PDF_COLORS.red : PDF_COLORS.soft, fontSize: 10, textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.4, marginBottom: 8 }}>{card.label}</div>
+              <div style={{ color: card.accent, fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{card.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
+          <BarChart3 size={18} style={{ color: PDF_COLORS.purple }} />
+          <span>Динамика за 12 месяцев</span>
+        </div>
+        <div style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 16, padding: 18, backgroundColor: '#ffffff' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 160, borderBottom: `1px solid ${PDF_COLORS.line}`, paddingBottom: 8, gap: 6 }}>
             {comparisonData.map(item => (
-              <div key={item.name} className="flex flex-col items-center flex-1 h-full justify-end">
-                <div className="flex items-end justify-center gap-1 w-full h-full">
-                  <div className={`w-3 sm:w-4 rounded-t-md ${item.hasData ? 'bg-red-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(5, (item.reach / maxReach) * 100)}%` : '5px' }}></div>
-                  <div className={`w-3 sm:w-4 rounded-t-md ${item.hasData ? 'bg-blue-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(5, (item.followers / maxFollowers) * 100)}%` : '5px' }}></div>
+              <div key={item.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 3, width: '100%', height: '100%' }}>
+                  <div style={{ width: 12, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: item.hasData ? '#ef4444' : '#cbd5e1', height: item.hasData ? `${Math.max(5, (item.reach / maxReach) * 100)}%` : 5 }} />
+                  <div style={{ width: 12, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: item.hasData ? '#3b82f6' : '#cbd5e1', height: item.hasData ? `${Math.max(5, (item.followers / maxFollowers) * 100)}%` : 5 }} />
                 </div>
-                <div className="text-center mt-2">
-                  <div className="font-bold text-slate-800 text-[9px] uppercase">{item.name}</div>
-                </div>
+                <div style={{ color: PDF_COLORS.ink, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', marginTop: 8, textAlign: 'center' }}>{item.name}</div>
               </div>
             ))}
           </div>
-          <div className="flex justify-center gap-6 mt-4 text-[10px] font-semibold text-slate-600">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-red-500"></span>Охват</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-500"></span>Подписчики</span>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 14, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 800 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#ef4444', display: 'inline-block' }} />Охват</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#3b82f6', display: 'inline-block' }} />Подписчики</span>
           </div>
         </div>
       </div>
 
-      <div className="mb-6 break-inside-avoid">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><CheckSquare size={18} className="text-blue-600"/> Выполнение планов (KPI)</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {kpiProgress.map(kpi => (
-            <div key={kpi.id} className="flex justify-between items-center p-3 border border-slate-200 rounded-xl">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">{kpi.platformName}</span>
-                <span className="font-semibold text-xs text-slate-800 truncate max-w-[200px]">{kpi.title}</span>
+      <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
+          <CheckSquare size={18} style={{ color: PDF_COLORS.blue }} />
+          <span>Выполнение планов (KPI)</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          {(kpiProgress || []).map(kpi => (
+            <div key={kpi.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, border: `1px solid ${PDF_COLORS.line}`, borderRadius: 12, backgroundColor: '#ffffff' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: '#94a3b8', fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>{kpi.platformName || 'Платформа'}</div>
+                <div style={{ color: '#1e293b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 210 }}>{kpi.title}</div>
               </div>
-              <div className="text-right whitespace-nowrap">
-                  <span className="text-lg font-bold text-slate-900">{kpi.current}</span>
-                  <span className="text-slate-500 font-medium text-xs"> / {kpi.target}</span>
+              <div style={{ color: PDF_COLORS.ink, fontSize: 18, fontWeight: 800, whiteSpace: 'nowrap', marginLeft: 8 }}>
+                {kpi.current}<span style={{ color: PDF_COLORS.soft, fontSize: 12, fontWeight: 700 }}> / {kpi.target}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
-      
+
       {data.text && (
-        <div className="mt-6 break-inside-avoid">
-          <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><FileText size={18} className="text-green-600"/> Резюме специалиста</h2>
-          <div className="text-slate-700 text-sm font-medium leading-relaxed bg-slate-50 p-5 border border-slate-200 rounded-2xl italic whitespace-pre-wrap">"{renderTextWithLinks(data.text)}"</div>
+        <div style={{ marginTop: 24, breakInside: 'avoid' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 12 }}>
+            <FileText size={18} style={{ color: PDF_COLORS.green }} />
+            <span>Резюме специалиста</span>
+          </div>
+          <div style={{ color: '#334155', fontSize: 13, fontWeight: 600, lineHeight: 1.55, backgroundColor: PDF_COLORS.panel, padding: 18, border: `1px solid ${PDF_COLORS.line}`, borderRadius: 16, whiteSpace: 'pre-wrap', fontStyle: 'italic' }}>{String(data.text || '')}</div>
         </div>
       )}
     </div>
@@ -2521,54 +2611,62 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, 
 
 function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis, appSettings }) {
   return (
-    <div className="w-full mx-auto font-sans bg-white text-slate-900">
-      <div className="border-b-[3px] border-red-600 pb-5 mb-8 flex justify-between items-end">
+    <div style={{ width: '100%', margin: '0 auto', backgroundColor: '#ffffff', color: PDF_COLORS.ink, fontFamily: 'Arial, Helvetica, sans-serif', boxSizing: 'border-box' }}>
+      <div style={{ borderBottom: `3px solid ${PDF_COLORS.red}`, paddingBottom: 18, marginBottom: 26, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h1 className="text-3xl font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-3">
-             <AppLogo settings={appSettings} size={28} />
-             {appSettings?.appName || 'ПОКИЗА'}
-          </h1>
-          <p className="text-base text-slate-600 font-medium">Контент-план • {currentMonthLabel}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: PDF_COLORS.red, fontSize: 30, lineHeight: 1.15, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
+            <PdfBrandLogo appSettings={appSettings} size={28} />
+            <span>{appSettings?.appName || 'ПОКИЗА'}</span>
+          </div>
+          <div style={{ color: PDF_COLORS.muted, fontSize: 15, fontWeight: 600 }}>Контент-план • {currentMonthLabel}</div>
         </div>
-        <div className="text-right">
-           <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата создания</div>
-           <div className="text-sm font-medium">{new Date().toLocaleDateString('ru-RU')}</div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: PDF_COLORS.soft, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Дата создания</div>
+          <div style={{ color: PDF_COLORS.ink, fontSize: 13, fontWeight: 600 }}>{new Date().toLocaleDateString('ru-RU')}</div>
         </div>
       </div>
 
-      <table className="w-full text-left border-collapse border border-slate-200 text-sm">
-         <thead>
-             <tr className="bg-slate-50">
-                 <th className="border border-slate-200 p-3 font-semibold text-slate-600 w-28 uppercase tracking-wider text-xs">Дата</th>
-                 <th className="border border-slate-200 p-3 font-semibold text-slate-600 w-56 uppercase tracking-wider text-xs">Платформа / Форматы</th>
-                 <th className="border border-slate-200 p-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Тема / Описание</th>
-                 <th className="border border-slate-200 p-3 font-semibold text-slate-600 w-28 text-center uppercase tracking-wider text-xs">Статус</th>
-             </tr>
-         </thead>
-         <tbody>
-            {monthTasks.length === 0 ? <tr><td colSpan="4" className="text-center p-6 text-slate-500 font-medium">Нет задач в этом месяце</td></tr> : null}
-            {monthTasks.map(task => {
-                const platform = platforms.find(p => p.id === task.platformId);
-                const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
-                return (
-                  <tr key={task.id} className="break-inside-avoid">
-                    <td className="border border-slate-200 p-3 align-top font-medium text-slate-800">{task.date.split('-').reverse().join('.')}</td>
-                    <td className="border border-slate-200 p-3 align-top">
-                      <div className="font-semibold text-[11px] uppercase text-red-600 mb-1.5">{platform?.name}</div>
-                      <div className="text-xs font-medium text-slate-700">{taskKpis.map(k=>k.title).join(', ')}</div>
-                    </td>
-                    <td className="border border-slate-200 p-3 align-top">
-                      <div className="font-semibold text-slate-900 mb-1.5">{task.title}</div>
-                      <div className="text-xs text-slate-600 font-medium whitespace-pre-wrap break-words">{renderTextWithLinks(task.text)}</div>
-                    </td>
-                    <td className="border border-slate-200 p-3 align-top text-center font-semibold text-xs">
-                      {task.status === 'completed' ? <span className="text-green-600 bg-green-50 px-2 py-1 rounded">Готово</span> : <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded">В плане</span>}
-                    </td>
-                  </tr>
-                )
-            })}
-         </tbody>
+      <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', border: `1px solid ${PDF_COLORS.line}`, fontSize: 13 }}>
+        <thead>
+          <tr style={{ backgroundColor: PDF_COLORS.panel }}>
+            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, width: 110, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Дата</th>
+            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, width: 230, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Платформа / Форматы</th>
+            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Тема / Описание</th>
+            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, width: 110, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          {monthTasks.length === 0 ? (
+            <tr>
+              <td colSpan={4} style={{ textAlign: 'center', padding: 24, color: PDF_COLORS.soft, fontWeight: 600 }}>Нет задач в этом месяце</td>
+            </tr>
+          ) : null}
+          {monthTasks.map(task => {
+            const platform = platforms.find(p => p.id === task.platformId);
+            const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
+            const isCompleted = task.status === 'completed';
+            return (
+              <tr key={task.id} style={{ breakInside: 'avoid' }}>
+                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top', color: '#1e293b', fontWeight: 700 }}>{task.date.split('-').reverse().join('.')}</td>
+                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top' }}>
+                  <div style={{ color: PDF_COLORS.red, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 7 }}>{platform?.name || 'Платформа'}</div>
+                  <div style={{ color: '#334155', fontSize: 12, fontWeight: 600, lineHeight: 1.45 }}>{taskKpis.map(k => k.title).join(', ') || 'Без формата'}</div>
+                </td>
+                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top' }}>
+                  <div style={{ color: PDF_COLORS.ink, fontSize: 13, fontWeight: 800, marginBottom: 7, lineHeight: 1.35 }}>{task.title}</div>
+                  <div style={{ color: PDF_COLORS.muted, fontSize: 12, fontWeight: 600, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{String(task.text || '')}</div>
+                </td>
+                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top', textAlign: 'center', fontSize: 12, fontWeight: 800 }}>
+                  <span style={{ color: isCompleted ? PDF_COLORS.green : PDF_COLORS.amber, backgroundColor: isCompleted ? PDF_COLORS.greenSoft : PDF_COLORS.amberSoft, padding: '5px 8px', borderRadius: 6, display: 'inline-block' }}>
+                    {isCompleted ? 'Готово' : 'В плане'}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
       </table>
     </div>
   );
 }
+
