@@ -11,9 +11,8 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v10-links-2026-06-13';
+const APP_VERSION = 'd1-sync-v11-2026-06-13';
 
-// Используем стабильные иконки для исключения проблем билда
 const Instagram = Globe;
 const Facebook = Users;
 const Youtube = PlayCircle;
@@ -80,65 +79,23 @@ const getPlatformIcon = (platform, size = 18) => {
   return <Globe size={size} strokeWidth={1.5} />;
 };
 
-const URL_PATTERN = /(https?:\/\/[^\s<]+|www\.[^\s<]+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<]*)?)/gi;
-const TRAILING_URL_PUNCTUATION = /[.,!?;:)\]}>]+$/;
+const renderTextWithLinks = (text) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|(?:instagram\.com|facebook\.com|tiktok\.com|vm\.tiktok\.com|youtube\.com|youtu\.be|t\.me)\/[^\s]+)/gi;
+  const parts = String(text).split(urlRegex);
 
-function LinkifiedText({ text, className = '' }) {
-  const value = String(text || '');
-  if (!value) return null;
-
-  const parts = [];
-  const regex = new RegExp(URL_PATTERN);
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(value)) !== null) {
-    const fullMatch = match[0];
-    const start = match.index;
-
-    if (start > lastIndex) {
-      parts.push(value.slice(lastIndex, start));
-    }
-
-    let linkText = fullMatch;
-    let trailing = '';
-    const trailingMatch = linkText.match(TRAILING_URL_PUNCTUATION);
-
-    if (trailingMatch) {
-      trailing = trailingMatch[0];
-      linkText = linkText.slice(0, -trailing.length);
-    }
-
-    if (linkText) {
-      const href = /^https?:\/\//i.test(linkText) ? linkText : `https://${linkText}`;
-      parts.push(
-        <a
-          key={`link-${start}-${linkText}`}
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(event) => event.stopPropagation()}
-          onMouseDown={(event) => event.stopPropagation()}
-          className="text-blue-600 dark:text-blue-400 underline underline-offset-2 decoration-blue-400/60 hover:decoration-blue-600 break-all"
-        >
-          {linkText}
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      const href = part.startsWith('http://') || part.startsWith('https://') ? part : `https://${part}`;
+      return (
+        <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 underline break-all" onClick={(e) => e.stopPropagation()}>
+          {part}
         </a>
       );
     }
-
-    if (trailing) {
-      parts.push(trailing);
-    }
-
-    lastIndex = start + fullMatch.length;
-  }
-
-  if (lastIndex < value.length) {
-    parts.push(value.slice(lastIndex));
-  }
-
-  return <span className={`whitespace-pre-wrap break-words ${className}`}>{parts}</span>;
-}
+    return <span key={i}>{part}</span>;
+  });
+};
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -184,9 +141,13 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
 }
 
 export default function AppWrapper() {
-  // PWA & Viewport Setup
+  const [theme, setTheme] = useState('light');
+
+  // Убираем scroll заднего фона для модалок, фиксируем красный фон на iOS
   useEffect(() => {
-    // Force Viewport to prevent iOS zoom
+    document.body.style.overscrollBehaviorY = 'none';
+    document.body.style.backgroundColor = theme === 'dark' ? '#0A0A0A' : '#FAFAFA';
+
     let viewportMeta = document.getElementsByName('viewport')[0];
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
@@ -195,26 +156,31 @@ export default function AppWrapper() {
     }
     viewportMeta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0';
 
-    // Inject PWA Manifest dynamically
-    if (!document.getElementById('pokiza-dynamic-manifest')) {
+    let themeMeta = document.getElementsByName('theme-color')[0];
+    if (!themeMeta) {
+      themeMeta = document.createElement('meta');
+      themeMeta.name = 'theme-color';
+      document.head.appendChild(themeMeta);
+    }
+    themeMeta.content = theme === 'dark' ? '#0A0A0A' : '#FAFAFA';
+
+    if (!Array.from(document.getElementsByTagName('link')).some(link => link.rel === 'manifest')) {
        const manifest = {
           name: "Pokiza SMM",
           short_name: "Pokiza",
           display: "standalone",
           background_color: "#FAFAFA",
-          theme_color: "#E53935",
+          theme_color: "#FAFAFA",
           icons: [{ src: "https://cdn-icons-png.flaticon.com/512/3254/3254068.png", sizes: "512x512", type: "image/png" }]
        };
-       const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-       const manifestURL = URL.createObjectURL(manifestBlob);
+       const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+       const manifestURL = URL.createObjectURL(blob);
        const link = document.createElement('link');
-       link.id = 'pokiza-dynamic-manifest';
        link.rel = 'manifest';
        link.href = manifestURL;
        document.head.appendChild(link);
     }
 
-    // iOS PWA Meta Tags
     if (!document.getElementsByName('apple-mobile-web-app-capable')[0]) {
        const m1 = document.createElement('meta');
        m1.name = "apple-mobile-web-app-capable";
@@ -226,7 +192,7 @@ export default function AppWrapper() {
        m2.content = "default";
        document.head.appendChild(m2);
     }
-  }, []);
+  }, [theme]);
 
   const [usersDb, setUsersDb] = useState(() => {
     try {
@@ -251,11 +217,11 @@ export default function AppWrapper() {
     else localStorage.removeItem('pokiza_user');
   }, [user]);
   
-  if (!user) return <LoginScreen usersDb={usersDb} onLogin={setUser} />;
-  return <MainApp user={user} usersDb={usersDb} setUsersDb={setUsersDb} onLogout={() => setUser(null)} onUpdateUser={setUser} />;
+  if (!user) return <LoginScreen usersDb={usersDb} onLogin={setUser} theme={theme} />;
+  return <MainApp user={user} usersDb={usersDb} setUsersDb={setUsersDb} onLogout={() => setUser(null)} onUpdateUser={setUser} theme={theme} setTheme={setTheme} />;
 }
 
-function LoginScreen({ usersDb, onLogin }) {
+function LoginScreen({ usersDb, onLogin, theme }) {
   const [form, setForm] = useState({ login: '', pass: '' });
   const [error, setError] = useState('');
 
@@ -293,10 +259,8 @@ function LoginScreen({ usersDb, onLogin }) {
   );
 }
 
-function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
+function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, setTheme }) {
   const isAdmin = user?.role === 'admin';
-  
-  const [theme, setTheme] = useState('light');
   const [activeTab, setActiveTab] = useState('tasks');
   const [currentMonth, setCurrentMonth] = useState('2026-06');
   
@@ -310,7 +274,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: () => {} });
   const [printMode, setPrintMode] = useState(null);
   
-  // Drag and Drop State
   const [draggedTask, setDraggedTask] = useState(null);
   const taskSaveLockRef = useRef(false);
 
@@ -325,17 +288,22 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   }, []);
 
   useEffect(() => {
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [theme]);
+    // Prevent background scrolling when a modal is open
+    if (activeModal || selectedKpiForDetails || confirmDialog.isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [activeModal, selectedKpiForDetails, confirmDialog.isOpen]);
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), []);
   const confirmAction = useCallback((message, action) => setConfirmDialog({ isOpen: true, message, onConfirm: action }), []);
 
   const apiRequest = useCallback(async (path, options = {}) => {
     const response = await fetch(path, {
-      ...options,
       cache: 'no-store',
+      ...options,
       headers: {
         'content-type': 'application/json',
         ...(options.headers || {})
@@ -346,16 +314,12 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     let data = null;
 
     if (text) {
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = text;
-      }
+      try { data = JSON.parse(text); }
+      catch { data = text; }
     }
 
     if (!response.ok) {
-      const message = data?.error || `Ошибка API ${response.status}`;
-      throw new Error(message);
+      throw new Error(data?.error || `Ошибка API ${response.status}`);
     }
 
     return data;
@@ -439,11 +403,20 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     const doPrint = () => {
       try {
         const isLandscape = mode === 'plan';
+        // A4 PDF scale config (790px for vertical Analytics, 1100px for horizontal Plan)
+        const forcedWidth = isLandscape ? 1100 : 790; 
+
         const opt = {
           margin:       [10, 10, 10, 10],
           filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: isLandscape ? 1200 : 850 },
+          html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false, 
+            windowWidth: forcedWidth,
+            width: forcedWidth
+          },
           jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
         };
         
@@ -906,7 +879,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                             return <span key={i} className={`text-[10px] font-medium px-2 py-1 rounded-lg border inline-flex items-center gap-1.5 ${theme==='dark' ? `bg-slate-800 ${colorClass.border} ${colorClass.text}` : `bg-white shadow-sm ${colorClass.border} ${colorClass.text}`}`}><div className={`w-1.5 h-1.5 rounded-full ${colorClass.bg}`}></div>{k.title}</span>
                           })}
                         </div>
-                        {task.text && <p className="text-sm md:text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words pl-7"><LinkifiedText text={task.text} /></p>}
+                        {task.text && <div className="text-sm md:text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words pl-7 whitespace-pre-wrap">{renderTextWithLinks(task.text)}</div>}
                         <div className="flex justify-end gap-2">
                           <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-2 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
                           <button onClick={()=> deleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
@@ -966,7 +939,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                                 </td>
                                 <td className="p-4 align-top">
                                   <div className="font-semibold text-sm mb-1.5 text-slate-800 dark:text-white">{task.title}</div>
-                                  {task.text && <div className="text-xs font-medium text-slate-500 line-clamp-2"><LinkifiedText text={task.text} /></div>}
+                                  {task.text && <div className="text-xs font-medium text-slate-500 whitespace-pre-wrap">{renderTextWithLinks(task.text)}</div>}
                                 </td>
                                 <td className="p-4 text-right align-top">
                                   <div className="flex flex-col items-end gap-2">
@@ -1022,7 +995,13 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   </div>
 
                   {!currentAnalytics.isSubmitted ? (
-                    <AnalyticsInputForm theme={theme} currentData={currentAnalytics} onSave={(data) => saveAnalytics({ ...data, isSubmitted: true })} />
+                    <AnalyticsInputForm 
+                       theme={theme} 
+                       currentData={currentAnalytics} 
+                       showToast={showToast}
+                       onTempSave={(data) => setAnalytics(prev => ({ ...prev, [currentMonth]: { ...data, isSubmitted: false } }))}
+                       onSave={(data) => saveAnalytics({ ...data, isSubmitted: true })} 
+                    />
                   ) : (
                     <AnalyticsDashboard data={currentAnalytics} prevData={prevAnalytics} theme={theme} allData={analytics} months={MONTHS} onPrint={()=>handleDownloadPDF('analytics')} />
                   )}
@@ -1152,7 +1131,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
         </main>
         
         {/* Mobile Bottom Navigation */}
-        <nav style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t backdrop-blur-xl transition-transform duration-300 ${printMode ? 'translate-y-full' : 'translate-y-0'} ${theme==='dark'?'bg-[#111]/90 border-slate-800':'bg-white/95 border-slate-200'}`}>
+        <nav className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t pb-safe backdrop-blur-xl transition-transform duration-300 ${printMode ? 'translate-y-full' : 'translate-y-0'} ${theme==='dark'?'bg-[#111]/90 border-slate-800':'bg-white/95 border-slate-200'}`}>
            <div className="flex justify-around items-end h-16 px-2 pb-2">
               {MOBILE_NAV_ITEMS.slice(0,2).map(item => (
                  <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors active:scale-95 ${activeTab === item.id ? (theme==='dark'?'text-red-400':'text-red-600') : 'text-slate-400'}`}>
@@ -1162,7 +1141,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               ))}
               
               <div className="relative -top-5 z-50">
-                 <button onClick={() => { setEditingItem({ title: '', date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-[#111]">
+                 <button onClick={() => { setEditingItem({ date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-[#111]">
                     <Plus size={28} strokeWidth={2.5} />
                  </button>
               </div>
@@ -1285,7 +1264,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">План на месяц (шт)</label>
-              <input type="number" id="kpiTarget" defaultValue={editingItem?.target || 1} min="1" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" inputMode="decimal" pattern="[0-9]*" id="kpiTarget" defaultValue={editingItem?.target || 1} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-3 flex items-center gap-2">Цвет <span className="text-[10px] font-medium text-slate-400">(Для календаря)</span></label>
@@ -1300,11 +1279,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
             </div>
             <button onClick={() => {
                 const title = document.getElementById('kpiTitle').value;
-                const target = Number(document.getElementById('kpiTarget').value);
+                const target = Number(document.getElementById('kpiTarget').value.replace(/[^0-9]/g, ''));
                 const platformId = document.getElementById('kpiPlatform').value;
                 const colorId = editingItem.colorId || 'blue';
                 if(!title) return showToast('Введите название', 'error');
-                if(target < 1) return showToast('План должен быть больше 0', 'error');
+                if(!target || target < 1) return showToast('План должен быть больше 0', 'error');
                 saveKpi({ ...(editingItem || {}), title, target, platformId, colorId });
               }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Сохранить формат</button>
           </div>
@@ -1381,10 +1360,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       )}
     </div>
 
-    {/* Блок для генерации PDF. Используем absolute и избегаем fixed, чтобы не обрезалась высота */}
+    {/* Блок для генерации PDF. */}
     {printMode && (
-      <div className="absolute top-0 left-[-9999px] z-[-1] overflow-visible h-auto">
-        <div id="pdf-content-wrapper" className={`bg-white font-sans text-slate-900 p-8 mx-auto ${printMode === 'plan' ? 'w-[1100px]' : 'w-[800px]'}`}>
+      <div className="fixed top-0 left-[-9999px] z-[-1] overflow-visible">
+        <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-8 m-0" style={{ width: printMode === 'plan' ? '1100px' : '790px' }}>
           {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} allData={analytics} months={MONTHS} />}
           {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} />}
         </div>
@@ -1708,12 +1687,18 @@ function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick, onDropTask
   );
 }
 
-function AnalyticsInputForm({ onSave, currentData, theme }) {
+function AnalyticsInputForm({ onSave, onTempSave, currentData, theme, showToast }) {
   const [data, setData] = useState(currentData);
 
   useEffect(() => {
     setData(currentData);
   }, [currentData]);
+
+  const handleChange = (field, val) => {
+    const newData = { ...data, [field]: val };
+    setData(newData);
+    if (onTempSave) onTempSave(newData);
+  };
 
   const er = useMemo(() => {
     const r = Number(data.reach) || 0;
@@ -1730,7 +1715,14 @@ function AnalyticsInputForm({ onSave, currentData, theme }) {
         ].map(f => (
           <div key={f.id}>
             <label className="block text-xs font-semibold mb-2 flex items-center gap-1.5 text-slate-700 dark:text-slate-300"><f.icon size={16}/> {f.label}</label>
-            <input type="number" value={data[f.id]} onChange={e=>setData({...data, [f.id]: e.target.value})} className={`w-full px-4 py-2.5 border rounded-xl outline-none focus:border-red-600 font-medium text-base md:text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            <input 
+              type="text" 
+              inputMode="decimal" 
+              pattern="[0-9]*" 
+              value={data[f.id]} 
+              onChange={e => handleChange(f.id, e.target.value.replace(/[^0-9]/g, ''))} 
+              className={`w-full px-4 py-2.5 border rounded-xl outline-none focus:border-red-600 font-medium text-base md:text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} 
+            />
           </div>
         ))}
       </div>
@@ -1740,9 +1732,9 @@ function AnalyticsInputForm({ onSave, currentData, theme }) {
       </div>
       <div>
         <label className="block text-xs font-semibold mb-2">Выводы и инсайты</label>
-        <textarea rows="4" placeholder="Краткое резюме проделанной работы..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-3 border rounded-xl outline-none focus:border-red-600 resize-none font-medium text-base md:text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+        <textarea rows="4" placeholder="Краткое резюме проделанной работы..." value={data.text} onChange={e => handleChange('text', e.target.value)} className={`w-full px-4 py-3 border rounded-xl outline-none focus:border-red-600 resize-none font-medium text-base md:text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
       </div>
-      <button onClick={() => { if(!data.reach) return alert('Введите охват'); onSave({...data, er}); }} className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm shadow-red-600/20 flex items-center justify-center gap-2 transition-transform active:scale-95 w-full sm:w-auto text-sm"><Lock size={16}/> Отправить отчет</button>
+      <button onClick={() => { if(!data.reach) return showToast('Введите охват', 'error'); onSave({...data, er}); }} className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm shadow-red-600/20 flex items-center justify-center gap-2 transition-transform active:scale-95 w-full sm:w-auto text-sm"><Lock size={16}/> Отправить отчет</button>
     </div>
   );
 }
@@ -1791,7 +1783,7 @@ function AnalyticsDashboard({ data, prevData, theme, allData, months, onPrint })
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className={`p-6 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-white border-slate-100'}`}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500 flex justify-between">Динамика Охвата за 3 месяца <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium active:scale-95"><Download size={14}/> Скачать PDF</button></h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500 flex justify-between">Динамика Охвата <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium active:scale-95"><Download size={14}/> Скачать PDF</button></h3>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -1843,65 +1835,65 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
   const maxFollowers = Math.max(1, ...comparisonData.map(d => d.followers));
 
   return (
-    <div className="max-w-4xl mx-auto font-sans">
-      <div className="border-b-[3px] border-red-600 pb-5 mb-8 flex justify-between items-end">
+    <div className="w-[710px] mx-auto font-sans bg-white text-slate-900">
+      <div className="border-b-[3px] border-red-600 pb-4 mb-6 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-3"><TrendingUp size={28} strokeWidth={2.5}/> ПОКИЗА</h1>
-          <p className="text-base text-slate-600 font-medium">Аналитический отчет • {currentMonth}</p>
+          <h1 className="text-2xl font-bold text-red-600 uppercase tracking-wider mb-1 flex items-center gap-3"><TrendingUp size={24} strokeWidth={2.5}/> ПОКИЗА</h1>
+          <p className="text-sm text-slate-600 font-medium">Аналитический отчет • {currentMonth}</p>
         </div>
         <div className="text-right">
-           <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата создания</div>
-           <div className="text-sm font-medium">{new Date().toLocaleDateString('ru-RU')}</div>
+           <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата создания</div>
+           <div className="text-xs font-medium">{new Date().toLocaleDateString('ru-RU')}</div>
         </div>
       </div>
 
-      <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
-        <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><BarChart3 size={22} className="text-red-600"/> Ключевые показатели</h2>
-        <div className="grid grid-cols-4 gap-5">
-          <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Подписчики</div><div className="text-3xl font-bold text-slate-900">{data.followers}</div></div>
-          <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Охват</div><div className="text-3xl font-bold text-slate-900">{data.reach}</div></div>
-          <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Взаимодействия</div><div className="text-3xl font-bold text-slate-900">{Number(data.likes) + Number(data.comments)}</div></div>
-          <div className="p-5 border border-red-100 rounded-2xl bg-red-50"><div className="text-xs text-red-600 uppercase font-semibold tracking-wider mb-2">ER (Вовлеченность)</div><div className="text-3xl font-bold text-red-600">{data.er}%</div></div>
+      <div className="mb-6 break-inside-avoid">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600"/> Ключевые показатели</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Подписчики</div><div className="text-2xl font-bold text-slate-900">{data.followers}</div></div>
+          <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Охват</div><div className="text-2xl font-bold text-slate-900">{data.reach}</div></div>
+          <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Взаимодействия</div><div className="text-2xl font-bold text-slate-900">{Number(data.likes) + Number(data.comments)}</div></div>
+          <div className="p-4 border border-red-100 rounded-2xl bg-red-50"><div className="text-[10px] text-red-600 uppercase font-semibold tracking-wider mb-1.5">ER (Вовлеченность)</div><div className="text-2xl font-bold text-red-600">{data.er}%</div></div>
         </div>
       </div>
 
-      <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
-        <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><BarChart3 size={22} className="text-purple-600"/> Сравнение за 3 месяца</h2>
+      <div className="mb-6 break-inside-avoid">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-purple-600"/> Сравнение за 3 месяца</h2>
         <div className="border border-slate-200 rounded-2xl p-5 bg-white">
-          <div className="grid grid-cols-3 gap-5 h-64 items-end">
+          <div className="grid grid-cols-3 gap-5 h-48 items-end">
             {comparisonData.map(item => (
               <div key={item.name} className="h-full flex flex-col justify-end">
-                <div className="flex items-end justify-center gap-3 h-40 border-b border-slate-200 pb-0">
-                  <div className={`w-10 rounded-t-lg ${item.hasData ? 'bg-red-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.reach / maxReach) * 100)}%` : '8px' }}></div>
-                  <div className={`w-10 rounded-t-lg ${item.hasData ? 'bg-blue-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.followers / maxFollowers) * 100)}%` : '8px' }}></div>
+                <div className="flex items-end justify-center gap-3 h-28 border-b border-slate-200 pb-0">
+                  <div className={`w-8 rounded-t-lg ${item.hasData ? 'bg-red-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.reach / maxReach) * 100)}%` : '8px' }}></div>
+                  <div className={`w-8 rounded-t-lg ${item.hasData ? 'bg-blue-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.followers / maxFollowers) * 100)}%` : '8px' }}></div>
                 </div>
                 <div className="text-center mt-3">
-                  <div className="font-bold text-slate-800 text-sm">{item.name}</div>
-                  <div className="text-[10px] text-slate-500 font-semibold mt-1">Охват: {item.hasData ? item.reach.toLocaleString('ru') : 'нет данных'}</div>
-                  <div className="text-[10px] text-slate-500 font-semibold">Подписчики: {item.hasData ? item.followers.toLocaleString('ru') : 'нет данных'}</div>
+                  <div className="font-bold text-slate-800 text-xs">{item.name}</div>
+                  <div className="text-[9px] text-slate-500 font-semibold mt-1">Охват: {item.hasData ? item.reach.toLocaleString('ru') : 'нет данных'}</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Подписчики: {item.hasData ? item.followers.toLocaleString('ru') : 'нет данных'}</div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex justify-center gap-6 mt-5 text-xs font-semibold text-slate-600">
-            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500"></span>Охват</span>
-            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span>Подписчики</span>
+          <div className="flex justify-center gap-6 mt-4 text-[10px] font-semibold text-slate-600">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-red-500"></span>Охват</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-500"></span>Подписчики</span>
           </div>
         </div>
       </div>
 
-      <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
-        <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><CheckSquare size={22} className="text-blue-600"/> Выполнение планов (KPI)</h2>
-        <div className="grid grid-cols-2 gap-5">
+      <div className="mb-6 break-inside-avoid">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><CheckSquare size={18} className="text-blue-600"/> Выполнение планов (KPI)</h2>
+        <div className="grid grid-cols-2 gap-3">
           {kpiProgress.map(kpi => (
-            <div key={kpi.id} className="flex justify-between items-center p-4 border border-slate-200 rounded-2xl">
+            <div key={kpi.id} className="flex justify-between items-center p-3 border border-slate-200 rounded-xl">
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{kpi.platformName}</span>
-                <span className="font-semibold text-sm text-slate-800">{kpi.title}</span>
+                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">{kpi.platformName}</span>
+                <span className="font-semibold text-xs text-slate-800 truncate max-w-[200px]">{kpi.title}</span>
               </div>
-              <div className="text-right">
-                  <span className="text-2xl font-bold text-slate-900">{kpi.current}</span>
-                  <span className="text-slate-500 font-medium text-sm"> / {kpi.target}</span>
+              <div className="text-right whitespace-nowrap">
+                  <span className="text-lg font-bold text-slate-900">{kpi.current}</span>
+                  <span className="text-slate-500 font-medium text-xs"> / {kpi.target}</span>
               </div>
             </div>
           ))}
@@ -1909,9 +1901,9 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
       </div>
       
       {data.text && (
-        <div className="mt-8" style={{ pageBreakInside: 'avoid' }}>
-          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText size={22} className="text-green-600"/> Резюме специалиста</h2>
-          <div className="text-slate-700 text-base font-medium leading-relaxed bg-slate-50 p-6 border border-slate-200 rounded-2xl italic">"{data.text}"</div>
+        <div className="mt-6 break-inside-avoid">
+          <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><FileText size={18} className="text-green-600"/> Резюме специалиста</h2>
+          <div className="text-slate-700 text-sm font-medium leading-relaxed bg-slate-50 p-5 border border-slate-200 rounded-2xl italic">"{data.text}"</div>
         </div>
       )}
     </div>
@@ -1920,7 +1912,7 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }
 
 function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis }) {
   return (
-    <div className="max-w-[1200px] mx-auto font-sans">
+    <div className="w-full mx-auto font-sans bg-white text-slate-900">
       <div className="border-b-[3px] border-red-600 pb-5 mb-8 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-3"><TrendingUp size={28} strokeWidth={2.5}/> ПОКИЗА</h1>
@@ -1947,7 +1939,7 @@ function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis }
                 const platform = platforms.find(p => p.id === task.platformId);
                 const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
                 return (
-                  <tr key={task.id}>
+                  <tr key={task.id} className="break-inside-avoid">
                     <td className="border border-slate-200 p-3 align-top font-medium text-slate-800">{task.date.split('-').reverse().join('.')}</td>
                     <td className="border border-slate-200 p-3 align-top">
                       <div className="font-semibold text-[11px] uppercase text-red-600 mb-1.5">{platform?.name}</div>
@@ -1955,7 +1947,7 @@ function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis }
                     </td>
                     <td className="border border-slate-200 p-3 align-top">
                       <div className="font-semibold text-slate-900 mb-1.5">{task.title}</div>
-                      <div className="text-xs text-slate-600 font-medium"><LinkifiedText text={task.text} /></div>
+                      <div className="text-xs text-slate-600 font-medium whitespace-pre-wrap break-words">{renderTextWithLinks(task.text)}</div>
                     </td>
                     <td className="border border-slate-200 p-3 align-top text-center font-semibold text-xs">
                       {task.status === 'completed' ? <span className="text-green-600 bg-green-50 px-2 py-1 rounded">Готово</span> : <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded">В плане</span>}
