@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v16-dark-theme-pdf-fix';
+const APP_VERSION = 'd1-sync-v17-dark-persist-pdf-deploy-fix';
 
 const Instagram = Globe;
 const Facebook = Users;
@@ -419,7 +419,13 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
 }
 
 export default function AppWrapper() {
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('pokiza_theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
   const [appSettings, setAppSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('pokiza_settings');
@@ -468,7 +474,11 @@ export default function AppWrapper() {
 
   useEffect(() => {
     const isDark = theme === 'dark';
+    try {
+      localStorage.setItem('pokiza_theme', theme);
+    } catch {}
     document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
     document.documentElement.style.height = '100%';
     document.documentElement.style.backgroundColor = isDark ? '#07111f' : '#FAFAFA';
     document.body.style.height = '100%';
@@ -2483,7 +2493,7 @@ const PDF_COLORS = {
   amber: '#d97706',
   amberSoft: '#fffbeb',
   purple: '#7c3aed'
-} as const;
+};
 
 function PdfBrandLogo({ appSettings, size = 24 }) {
   if (appSettings?.logoUrl) {
