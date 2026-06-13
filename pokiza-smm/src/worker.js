@@ -34,13 +34,21 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, message: "Pokiza SMM API работает" });
+      return json({
+        ok: true,
+        message: "Pokiza SMM API работает"
+      });
     }
 
-    // PLATFORMS
+    // ---------- PLATFORMS ----------
+
     if (url.pathname === "/api/platforms" && request.method === "GET") {
       const { results } = await env.DB
-        .prepare("SELECT id, name, account, icon_name as iconName FROM platforms ORDER BY created_at ASC")
+        .prepare(`
+          SELECT id, name, account, icon_name as iconName
+          FROM platforms
+          ORDER BY created_at ASC
+        `)
         .all();
 
       return json(results);
@@ -49,6 +57,10 @@ export default {
     if (url.pathname === "/api/platforms" && request.method === "POST") {
       const body = await readJson(request);
       const id = body.id || `p_${Date.now()}`;
+
+      if (!body.name) {
+        return json({ ok: false, error: "Название платформы обязательно" }, 400);
+      }
 
       await env.DB
         .prepare(`
@@ -59,7 +71,12 @@ export default {
             account = excluded.account,
             icon_name = excluded.icon_name
         `)
-        .bind(id, body.name, body.account || "", body.iconName || "globe")
+        .bind(
+          id,
+          body.name,
+          body.account || "",
+          body.iconName || "globe"
+        )
         .run();
 
       return json({ ok: true, id });
@@ -68,17 +85,24 @@ export default {
     if (url.pathname.startsWith("/api/platforms/") && request.method === "DELETE") {
       const id = url.pathname.split("/").pop();
 
-      await env.DB.prepare("DELETE FROM platforms WHERE id = ?").bind(id).run();
+      await env.DB.prepare("DELETE FROM task_kpis WHERE kpi_id IN (SELECT id FROM kpis WHERE platform_id = ?)").bind(id).run();
       await env.DB.prepare("DELETE FROM kpis WHERE platform_id = ?").bind(id).run();
+      await env.DB.prepare("DELETE FROM platforms WHERE id = ?").bind(id).run();
 
       return json({ ok: true });
     }
 
-    // KPIS
+    // ---------- KPIS ----------
+
     if (url.pathname === "/api/kpis" && request.method === "GET") {
       const { results } = await env.DB
         .prepare(`
-          SELECT id, platform_id as platformId, title, target, color_id as colorId
+          SELECT
+            id,
+            platform_id as platformId,
+            title,
+            target,
+            color_id as colorId
           FROM kpis
           ORDER BY created_at ASC
         `)
@@ -91,6 +115,10 @@ export default {
       const body = await readJson(request);
       const id = body.id || `kpi_${Date.now()}`;
 
+      if (!body.platformId || !body.title) {
+        return json({ ok: false, error: "Платформа и название KPI обязательны" }, 400);
+      }
+
       await env.DB
         .prepare(`
           INSERT INTO kpis (id, platform_id, title, target, color_id)
@@ -101,7 +129,13 @@ export default {
             target = excluded.target,
             color_id = excluded.color_id
         `)
-        .bind(id, body.platformId, body.title, Number(body.target || 1), body.colorId || "blue")
+        .bind(
+          id,
+          body.platformId,
+          body.title,
+          Number(body.target || 1),
+          body.colorId || "blue"
+        )
         .run();
 
       return json({ ok: true, id });
@@ -110,13 +144,14 @@ export default {
     if (url.pathname.startsWith("/api/kpis/") && request.method === "DELETE") {
       const id = url.pathname.split("/").pop();
 
-      await env.DB.prepare("DELETE FROM kpis WHERE id = ?").bind(id).run();
       await env.DB.prepare("DELETE FROM task_kpis WHERE kpi_id = ?").bind(id).run();
+      await env.DB.prepare("DELETE FROM kpis WHERE id = ?").bind(id).run();
 
       return json({ ok: true });
     }
 
-    // TASKS
+    // ---------- TASKS ----------
+
     if (url.pathname === "/api/tasks" && request.method === "GET") {
       const month = url.searchParams.get("month");
 
@@ -127,13 +162,19 @@ export default {
       const { results } = await stmt.all();
 
       const tasks = [];
+
       for (const row of results) {
         const kpis = await env.DB
           .prepare("SELECT kpi_id FROM task_kpis WHERE task_id = ?")
           .bind(row.id)
           .all();
 
-        tasks.push(normalizeTask(row, kpis.results.map((item) => item.kpi_id)));
+        tasks.push(
+          normalizeTask(
+            row,
+            kpis.results.map((item) => item.kpi_id)
+          )
+        );
       }
 
       return json(tasks);
@@ -141,6 +182,10 @@ export default {
 
     if (url.pathname === "/api/tasks" && request.method === "POST") {
       const body = await readJson(request);
+
+      if (!body.title || !body.date) {
+        return json({ ok: false, error: "Название и дата задачи обязательны" }, 400);
+      }
 
       const id = body.id || `task_${Date.now()}`;
       const month = body.month || body.date.slice(0, 7);
@@ -172,7 +217,10 @@ export default {
         )
         .run();
 
-      await env.DB.prepare("DELETE FROM task_kpis WHERE task_id = ?").bind(id).run();
+      await env.DB
+        .prepare("DELETE FROM task_kpis WHERE task_id = ?")
+        .bind(id)
+        .run();
 
       for (const kpiId of body.kpiIds || []) {
         await env.DB
@@ -193,11 +241,15 @@ export default {
       return json({ ok: true });
     }
 
-    // ANALYTICS
+    // ---------- ANALYTICS ----------
+
     if (url.pathname === "/api/analytics" && request.method === "GET") {
-      const { results } = await env.DB.prepare("SELECT * FROM analytics").all();
+      const { results } = await env.DB
+        .prepare("SELECT * FROM analytics")
+        .all();
 
       const map = {};
+
       for (const row of results) {
         map[row.month] = {
           followers: row.followers,
@@ -216,9 +268,22 @@ export default {
     if (url.pathname === "/api/analytics" && request.method === "POST") {
       const body = await readJson(request);
 
+      if (!body.month) {
+        return json({ ok: false, error: "Месяц обязателен" }, 400);
+      }
+
       await env.DB
         .prepare(`
-          INSERT INTO analytics (month, followers, reach, likes, comments, er, text, is_submitted)
+          INSERT INTO analytics (
+            month,
+            followers,
+            reach,
+            likes,
+            comments,
+            er,
+            text,
+            is_submitted
+          )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(month) DO UPDATE SET
             followers = excluded.followers,
@@ -244,6 +309,8 @@ export default {
 
       return json({ ok: true });
     }
+
+    // ---------- FALLBACK TO REACT APP ----------
 
     return env.ASSETS.fetch(request);
   }
