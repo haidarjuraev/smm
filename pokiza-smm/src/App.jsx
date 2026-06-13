@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v17-dark-persist-pdf-deploy-fix';
+const APP_VERSION = 'd1-sync-v18-a4-pdf-modal-scroll-fix';
 
 const Instagram = Globe;
 const Facebook = Users;
@@ -390,14 +390,39 @@ function Toast({ message, type, onClose }) {
 }
 
 function Modal({ title, onClose, children, maxWidth = 'max-w-md' }) {
+  const handleBackdropMouseDown = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  const stopScrollBubble = (e) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-200" onMouseDown={onClose}>
-      <div className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-700 transition-colors`} onMouseDown={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-200"
+      onMouseDown={handleBackdropMouseDown}
+      onWheel={stopScrollBubble}
+      onTouchMove={stopScrollBubble}
+      style={{ overscrollBehavior: 'contain' }}
+    >
+      <div
+        className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-700 transition-colors`}
+        onMouseDown={e => e.stopPropagation()}
+        onWheel={stopScrollBubble}
+        onTouchMove={stopScrollBubble}
+        style={{ overscrollBehavior: 'contain' }}
+      >
         <div className="px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center shrink-0 transition-colors">
           <h3 className="font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate pr-3">{title}</h3>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95 shrink-0"><X size={20}/></button>
         </div>
-        <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar">{children}</div>
+        <div
+          className="p-4 sm:p-5 overflow-y-auto custom-scrollbar"
+          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -644,15 +669,25 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     localStorage.setItem('pokiza_analytics_drafts', JSON.stringify(analyticsDrafts));
   }, [analyticsDrafts]);
 
-  // Глобальная блокировка скролла для модалок
+  // Глобальная блокировка скролла для модалок.
+  // Фон не прокручивается, а скролл остается только внутри активного окна/дровера.
   useEffect(() => {
-    if (activeModal || selectedKpiForDetails || confirmDialog.isOpen) {
+    const isModalOpen = Boolean(activeModal || selectedKpiForDetails || confirmDialog.isOpen);
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+
+    if (isModalOpen) {
       document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none'; 
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
+      document.body.style.overscrollBehavior = 'none';
+      document.documentElement.style.overscrollBehavior = 'none';
     }
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+    };
   }, [activeModal, selectedKpiForDetails, confirmDialog.isOpen]);
 
   const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), []);
@@ -768,19 +803,19 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
     try {
       setPrintMode(mode);
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))));
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await new Promise(resolve => setTimeout(resolve, 350));
       await loadHtml2Pdf();
 
       const element = document.getElementById('pdf-content-wrapper');
       if (!element) throw new Error('Не удалось найти контент для PDF');
 
-      const isLandscape = mode === 'plan';
-      const forcedWidth = isLandscape ? 1100 : 790;
-      const scale = Math.min(2, Math.max(1.25, window.devicePixelRatio || 1.5));
+      const printWidth = 794; // A4 portrait width in CSS pixels at 96dpi
+      const printHeight = Math.max(element.scrollHeight, 1123); // A4 portrait height in CSS pixels at 96dpi
+      const scale = Math.min(2, Math.max(1.5, window.devicePixelRatio || 1.5));
 
       const opt = {
-        margin: [10, 10, 10, 10],
+        margin: [8, 8, 8, 8],
         filename: fileName,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
@@ -789,22 +824,28 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
           allowTaint: false,
           logging: false,
           backgroundColor: '#ffffff',
-          windowWidth: forcedWidth,
-          width: forcedWidth,
+          windowWidth: printWidth,
+          windowHeight: printHeight,
+          width: printWidth,
+          height: printHeight,
           scrollX: 0,
           scrollY: 0,
           removeContainer: true,
           onclone: (clonedDocument) => {
             const clonedElement = clonedDocument.getElementById('pdf-content-wrapper');
             if (clonedElement) {
+              clonedElement.style.position = 'static';
+              clonedElement.style.left = 'auto';
+              clonedElement.style.top = 'auto';
+              clonedElement.style.width = `${printWidth}px`;
               clonedElement.style.backgroundColor = '#ffffff';
               clonedElement.style.color = '#0f172a';
               clonedElement.style.fontFamily = 'Arial, Helvetica, sans-serif';
             }
           }
         },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'] }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.pdf-avoid-break'] }
       };
 
       const blob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
@@ -1070,6 +1111,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
   const todayStr = getLocalISODate();
   const pdfAnalyticsData = currentAnalytics.isSubmitted ? currentAnalytics : (analyticsDrafts[currentMonth] || currentAnalytics);
+  const isModalOpen = Boolean(activeModal || selectedKpiForDetails || confirmDialog.isOpen);
 
   return (
     <>
@@ -1158,7 +1200,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto px-4 pt-4 sm:px-8 sm:pt-8 relative scroll-smooth custom-scrollbar pb-[calc(7rem_+_env(safe-area-inset-bottom))] md:pb-8">
+        <main className={`flex-1 ${isModalOpen ? 'overflow-hidden' : 'overflow-y-auto'} px-4 pt-4 sm:px-8 sm:pt-8 relative scroll-smooth custom-scrollbar pb-[calc(7rem_+_env(safe-area-inset-bottom))] md:pb-8`}>
           <div className="max-w-6xl mx-auto space-y-6 min-h-full pb-[calc(2rem_+_env(safe-area-inset-bottom))] md:pb-0">
             
             {/* Mobile Context Header */}
@@ -1989,27 +2031,28 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
     </div>
 
-    {/* Блок для генерации PDF */}
+    {/* Блок для генерации PDF. Важно: не уводим в left:-10000px, иначе html2canvas режет левую часть отчета. */}
     {printMode && (
       <div
         aria-hidden="true"
         style={{
           position: 'fixed',
-          left: '-10000px',
+          left: 0,
           top: 0,
-          width: printMode === 'plan' ? '1100px' : '790px',
+          width: '794px',
+          minHeight: '1123px',
           backgroundColor: '#ffffff',
           color: '#0f172a',
           pointerEvents: 'none',
-          zIndex: 0
+          zIndex: 999999
         }}
       >
         <div
           id="pdf-content-wrapper"
           style={{
-            width: printMode === 'plan' ? '1100px' : '790px',
-            minHeight: '100px',
-            padding: '40px',
+            width: '794px',
+            minHeight: '1123px',
+            padding: '28px',
             margin: 0,
             boxSizing: 'border-box',
             backgroundColor: '#ffffff',
@@ -2484,6 +2527,7 @@ const PDF_COLORS = {
   soft: '#64748b',
   line: '#e2e8f0',
   panel: '#f8fafc',
+  panel2: '#f1f5f9',
   red: '#dc2626',
   redSoft: '#fef2f2',
   blue: '#2563eb',
@@ -2492,8 +2536,23 @@ const PDF_COLORS = {
   greenSoft: '#f0fdf4',
   amber: '#d97706',
   amberSoft: '#fffbeb',
-  purple: '#7c3aed'
+  purple: '#7c3aed',
+  purpleSoft: '#f5f3ff'
 };
+
+const PDF_PAGE_WIDTH = 738;
+
+function formatPdfDate(value) {
+  if (!value) return '-';
+  const parts = String(value).split('-');
+  if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  return String(value);
+}
+
+function cleanPdfText(value, fallback = '-') {
+  const text = String(value || '').trim();
+  return text || fallback;
+}
 
 function PdfBrandLogo({ appSettings, size = 24 }) {
   if (appSettings?.logoUrl) {
@@ -2510,7 +2569,44 @@ function PdfBrandLogo({ appSettings, size = 24 }) {
   return <TrendingUp size={size} style={{ color: PDF_COLORS.red, flexShrink: 0 }} strokeWidth={2.5} />;
 }
 
+function PdfHeader({ title, subtitle, appSettings }) {
+  return (
+    <div className="pdf-avoid-break" style={{ borderBottom: `3px solid ${PDF_COLORS.red}`, paddingBottom: 14, marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: PDF_COLORS.red, fontSize: 22, lineHeight: 1.15, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+          <PdfBrandLogo appSettings={appSettings} size={24} />
+          <span>{appSettings?.appName || 'ПОКИЗА'}</span>
+        </div>
+        <div style={{ color: PDF_COLORS.ink, fontSize: 20, lineHeight: 1.2, fontWeight: 800, marginBottom: 4 }}>{title}</div>
+        <div style={{ color: PDF_COLORS.muted, fontSize: 12, lineHeight: 1.35, fontWeight: 600 }}>{subtitle}</div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div style={{ color: PDF_COLORS.soft, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Дата создания</div>
+        <div style={{ color: PDF_COLORS.ink, fontSize: 12, fontWeight: 700 }}>{new Date().toLocaleDateString('ru-RU')}</div>
+      </div>
+    </div>
+  );
+}
+
+function PdfSectionTitle({ children, color = PDF_COLORS.red }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: PDF_COLORS.ink, fontSize: 15, fontWeight: 800, margin: '18px 0 10px' }}>
+      <span style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: color, display: 'inline-block' }} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function PdfPill({ children, color = PDF_COLORS.muted, bg = PDF_COLORS.panel }) {
+  return (
+    <span style={{ display: 'inline-block', color, backgroundColor: bg, border: `1px solid ${PDF_COLORS.line}`, borderRadius: 999, padding: '4px 8px', fontSize: 10, lineHeight: 1.2, fontWeight: 800, marginRight: 5, marginBottom: 5 }}>
+      {children}
+    </span>
+  );
+}
+
 function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, appSettings }) {
+  const interactions = Number(data.likes || 0) + Number(data.comments || 0);
   const comparisonData = (months || []).map(m => {
     const d = allData?.[m.value];
     return {
@@ -2518,165 +2614,151 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, 
       name: m.label.split(' ')[0],
       followers: d?.isSubmitted ? Number(d.followers) || 0 : 0,
       reach: d?.isSubmitted ? Number(d.reach) || 0 : 0,
+      likes: d?.isSubmitted ? Number(d.likes) || 0 : 0,
+      comments: d?.isSubmitted ? Number(d.comments) || 0 : 0,
+      er: d?.isSubmitted ? Number(d.er) || 0 : 0,
       hasData: Boolean(d?.isSubmitted),
     };
   });
-  const maxReach = Math.max(1, ...comparisonData.map(d => d.reach));
-  const maxFollowers = Math.max(1, ...comparisonData.map(d => d.followers));
-  const interactions = Number(data.likes || 0) + Number(data.comments || 0);
+
   const statCards = [
-    { label: 'Подписчики', value: data.followers || 0, accent: PDF_COLORS.ink, bg: PDF_COLORS.panel, border: PDF_COLORS.line },
-    { label: 'Охват', value: data.reach || 0, accent: PDF_COLORS.ink, bg: PDF_COLORS.panel, border: PDF_COLORS.line },
-    { label: 'Взаимодействия', value: interactions, accent: PDF_COLORS.ink, bg: PDF_COLORS.panel, border: PDF_COLORS.line },
-    { label: 'ER (Вовлеченность)', value: `${data.er || 0}%`, accent: PDF_COLORS.red, bg: PDF_COLORS.redSoft, border: '#fecaca' },
+    { label: 'Подписчики', value: data.followers || 0, bg: PDF_COLORS.panel, color: PDF_COLORS.ink },
+    { label: 'Охват', value: data.reach || 0, bg: PDF_COLORS.blueSoft, color: PDF_COLORS.blue },
+    { label: 'Взаимодействия', value: interactions, bg: PDF_COLORS.purpleSoft, color: PDF_COLORS.purple },
+    { label: 'ER', value: `${data.er || 0}%`, bg: PDF_COLORS.redSoft, color: PDF_COLORS.red },
   ];
 
   return (
-    <div style={{ width: 710, margin: '0 auto', backgroundColor: '#ffffff', color: PDF_COLORS.ink, fontFamily: 'Arial, Helvetica, sans-serif', boxSizing: 'border-box' }}>
-      <div style={{ borderBottom: `3px solid ${PDF_COLORS.red}`, paddingBottom: 16, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: PDF_COLORS.red, fontSize: 24, lineHeight: 1.15, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-            <PdfBrandLogo appSettings={appSettings} size={24} />
-            <span>{appSettings?.appName || 'ПОКИЗА'}</span>
+    <div style={{ width: PDF_PAGE_WIDTH, margin: '0 auto', backgroundColor: '#ffffff', color: PDF_COLORS.ink, fontFamily: 'Arial, Helvetica, sans-serif', boxSizing: 'border-box' }}>
+      <PdfHeader title={`Аналитика за ${currentMonth}`} subtitle="Вертикальный отчет A4: показатели, динамика, KPI и комментарий" appSettings={appSettings} />
+
+      <div className="pdf-avoid-break" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+        {statCards.map(card => (
+          <div key={card.label} style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 14, backgroundColor: card.bg, padding: 13, minHeight: 72 }}>
+            <div style={{ color: PDF_COLORS.soft, fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.35, marginBottom: 8 }}>{card.label}</div>
+            <div style={{ color: card.color, fontSize: 24, fontWeight: 900, lineHeight: 1 }}>{card.value}</div>
           </div>
-          <div style={{ color: PDF_COLORS.muted, fontSize: 13, fontWeight: 600 }}>Аналитический отчет • {currentMonth}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ color: PDF_COLORS.soft, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Дата создания</div>
-          <div style={{ color: PDF_COLORS.ink, fontSize: 12, fontWeight: 600 }}>{new Date().toLocaleDateString('ru-RU')}</div>
-        </div>
+        ))}
       </div>
 
-      <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
-          <BarChart3 size={18} style={{ color: PDF_COLORS.red }} />
-          <span>Ключевые показатели</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {statCards.map(card => (
-            <div key={card.label} style={{ padding: 16, border: `1px solid ${card.border}`, borderRadius: 16, backgroundColor: card.bg }}>
-              <div style={{ color: card.accent === PDF_COLORS.red ? PDF_COLORS.red : PDF_COLORS.soft, fontSize: 10, textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.4, marginBottom: 8 }}>{card.label}</div>
-              <div style={{ color: card.accent, fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{card.value}</div>
-            </div>
+      <PdfSectionTitle color={PDF_COLORS.blue}>Динамика за 12 месяцев</PdfSectionTitle>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: `1px solid ${PDF_COLORS.line}`, marginBottom: 14 }}>
+        <thead>
+          <tr style={{ backgroundColor: PDF_COLORS.panel }}>
+            <th style={{ width: 110, padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 900, textAlign: 'left' }}>Месяц</th>
+            <th style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 900, textAlign: 'right' }}>Подписчики</th>
+            <th style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 900, textAlign: 'right' }}>Охват</th>
+            <th style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 900, textAlign: 'right' }}>Лайки</th>
+            <th style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 900, textAlign: 'right' }}>Комментарии</th>
+            <th style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 900, textAlign: 'right' }}>ER</th>
+          </tr>
+        </thead>
+        <tbody>
+          {comparisonData.map(item => (
+            <tr key={item.value} style={{ backgroundColor: item.hasData ? '#ffffff' : '#fbfdff' }}>
+              <td style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.ink, fontSize: 10.5, fontWeight: 800 }}>{item.name}</td>
+              <td style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.ink, fontSize: 10.5, fontWeight: 700, textAlign: 'right' }}>{item.hasData ? item.followers : '-'}</td>
+              <td style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.ink, fontSize: 10.5, fontWeight: 700, textAlign: 'right' }}>{item.hasData ? item.reach : '-'}</td>
+              <td style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.ink, fontSize: 10.5, fontWeight: 700, textAlign: 'right' }}>{item.hasData ? item.likes : '-'}</td>
+              <td style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: PDF_COLORS.ink, fontSize: 10.5, fontWeight: 700, textAlign: 'right' }}>{item.hasData ? item.comments : '-'}</td>
+              <td style={{ padding: 8, border: `1px solid ${PDF_COLORS.line}`, color: item.hasData ? PDF_COLORS.red : PDF_COLORS.soft, fontSize: 10.5, fontWeight: 800, textAlign: 'right' }}>{item.hasData ? `${item.er}%` : '-'}</td>
+            </tr>
           ))}
-        </div>
-      </div>
+        </tbody>
+      </table>
 
-      <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
-          <BarChart3 size={18} style={{ color: PDF_COLORS.purple }} />
-          <span>Динамика за 12 месяцев</span>
-        </div>
-        <div style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 16, padding: 18, backgroundColor: '#ffffff' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 160, borderBottom: `1px solid ${PDF_COLORS.line}`, paddingBottom: 8, gap: 6 }}>
-            {comparisonData.map(item => (
-              <div key={item.value} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 3, width: '100%', height: '100%' }}>
-                  <div style={{ width: 12, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: item.hasData ? '#ef4444' : '#cbd5e1', height: item.hasData ? `${Math.max(5, (item.reach / maxReach) * 100)}%` : 5 }} />
-                  <div style={{ width: 12, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: item.hasData ? '#3b82f6' : '#cbd5e1', height: item.hasData ? `${Math.max(5, (item.followers / maxFollowers) * 100)}%` : 5 }} />
+      <PdfSectionTitle color={PDF_COLORS.green}>Выполнение контент-плана</PdfSectionTitle>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+        {(kpiProgress || []).length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', color: PDF_COLORS.soft, fontSize: 12, fontWeight: 700, padding: 14, border: `1px dashed ${PDF_COLORS.line}`, borderRadius: 12 }}>KPI не настроены.</div>
+        ) : (kpiProgress || []).map(kpi => {
+          const target = Math.max(1, Number(kpi.target) || 1);
+          const current = Number(kpi.current) || 0;
+          const percent = Math.min(100, Math.round((current / target) * 100));
+          return (
+            <div key={kpi.id} className="pdf-avoid-break" style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 12, padding: 10, backgroundColor: '#ffffff' }}>
+              <div style={{ color: PDF_COLORS.soft, fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.25, marginBottom: 3 }}>{kpi.platformName || 'Платформа'}</div>
+              <div style={{ color: PDF_COLORS.ink, fontSize: 11, fontWeight: 800, lineHeight: 1.3, minHeight: 28 }}>{kpi.title}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
+                <div style={{ flex: 1, height: 7, borderRadius: 99, backgroundColor: PDF_COLORS.panel2, overflow: 'hidden' }}>
+                  <div style={{ width: `${percent}%`, height: '100%', backgroundColor: percent >= 100 ? PDF_COLORS.green : PDF_COLORS.red, borderRadius: 99 }} />
                 </div>
-                <div style={{ color: PDF_COLORS.ink, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', marginTop: 8, textAlign: 'center' }}>{item.name}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 14, color: PDF_COLORS.muted, fontSize: 10, fontWeight: 800 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#ef4444', display: 'inline-block' }} />Охват</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#3b82f6', display: 'inline-block' }} />Подписчики</span>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 14 }}>
-          <CheckSquare size={18} style={{ color: PDF_COLORS.blue }} />
-          <span>Выполнение планов (KPI)</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-          {(kpiProgress || []).map(kpi => (
-            <div key={kpi.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, border: `1px solid ${PDF_COLORS.line}`, borderRadius: 12, backgroundColor: '#ffffff' }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ color: '#94a3b8', fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>{kpi.platformName || 'Платформа'}</div>
-                <div style={{ color: '#1e293b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 210 }}>{kpi.title}</div>
-              </div>
-              <div style={{ color: PDF_COLORS.ink, fontSize: 18, fontWeight: 800, whiteSpace: 'nowrap', marginLeft: 8 }}>
-                {kpi.current}<span style={{ color: PDF_COLORS.soft, fontSize: 12, fontWeight: 700 }}> / {kpi.target}</span>
+                <div style={{ color: PDF_COLORS.ink, fontSize: 12, fontWeight: 900, whiteSpace: 'nowrap' }}>{current}/{target}</div>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {data.text && (
-        <div style={{ marginTop: 24, breakInside: 'avoid' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e293b', fontSize: 18, fontWeight: 800, marginBottom: 12 }}>
-            <FileText size={18} style={{ color: PDF_COLORS.green }} />
-            <span>Резюме специалиста</span>
-          </div>
-          <div style={{ color: '#334155', fontSize: 13, fontWeight: 600, lineHeight: 1.55, backgroundColor: PDF_COLORS.panel, padding: 18, border: `1px solid ${PDF_COLORS.line}`, borderRadius: 16, whiteSpace: 'pre-wrap', fontStyle: 'italic' }}>{String(data.text || '')}</div>
-        </div>
-      )}
+      <PdfSectionTitle color={PDF_COLORS.red}>Резюме специалиста</PdfSectionTitle>
+      <div className="pdf-avoid-break" style={{ color: '#334155', fontSize: 12, fontWeight: 600, lineHeight: 1.55, backgroundColor: PDF_COLORS.panel, padding: 14, border: `1px solid ${PDF_COLORS.line}`, borderRadius: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {cleanPdfText(data.text, 'Комментарий не добавлен.')}
+      </div>
     </div>
   );
 }
 
 function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis, appSettings }) {
+  const completedCount = monthTasks.filter(t => t.status === 'completed').length;
+  const pendingCount = monthTasks.length - completedCount;
+
   return (
-    <div style={{ width: '100%', margin: '0 auto', backgroundColor: '#ffffff', color: PDF_COLORS.ink, fontFamily: 'Arial, Helvetica, sans-serif', boxSizing: 'border-box' }}>
-      <div style={{ borderBottom: `3px solid ${PDF_COLORS.red}`, paddingBottom: 18, marginBottom: 26, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: PDF_COLORS.red, fontSize: 30, lineHeight: 1.15, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
-            <PdfBrandLogo appSettings={appSettings} size={28} />
-            <span>{appSettings?.appName || 'ПОКИЗА'}</span>
-          </div>
-          <div style={{ color: PDF_COLORS.muted, fontSize: 15, fontWeight: 600 }}>Контент-план • {currentMonthLabel}</div>
+    <div style={{ width: PDF_PAGE_WIDTH, margin: '0 auto', backgroundColor: '#ffffff', color: PDF_COLORS.ink, fontFamily: 'Arial, Helvetica, sans-serif', boxSizing: 'border-box' }}>
+      <PdfHeader title={`Контент-план: ${currentMonthLabel}`} subtitle="Вертикальный A4-отчет: все задачи, даты, площадки, форматы, описания и статусы" appSettings={appSettings} />
+
+      <div className="pdf-avoid-break" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 14, backgroundColor: PDF_COLORS.panel, padding: 12 }}>
+          <div style={{ color: PDF_COLORS.soft, fontSize: 9, fontWeight: 900, textTransform: 'uppercase', marginBottom: 6 }}>Всего задач</div>
+          <div style={{ color: PDF_COLORS.ink, fontSize: 24, fontWeight: 900 }}>{monthTasks.length}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ color: PDF_COLORS.soft, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Дата создания</div>
-          <div style={{ color: PDF_COLORS.ink, fontSize: 13, fontWeight: 600 }}>{new Date().toLocaleDateString('ru-RU')}</div>
+        <div style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 14, backgroundColor: PDF_COLORS.greenSoft, padding: 12 }}>
+          <div style={{ color: PDF_COLORS.soft, fontSize: 9, fontWeight: 900, textTransform: 'uppercase', marginBottom: 6 }}>Готово</div>
+          <div style={{ color: PDF_COLORS.green, fontSize: 24, fontWeight: 900 }}>{completedCount}</div>
+        </div>
+        <div style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 14, backgroundColor: PDF_COLORS.amberSoft, padding: 12 }}>
+          <div style={{ color: PDF_COLORS.soft, fontSize: 9, fontWeight: 900, textTransform: 'uppercase', marginBottom: 6 }}>В плане</div>
+          <div style={{ color: PDF_COLORS.amber, fontSize: 24, fontWeight: 900 }}>{pendingCount}</div>
         </div>
       </div>
 
-      <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', border: `1px solid ${PDF_COLORS.line}`, fontSize: 13 }}>
-        <thead>
-          <tr style={{ backgroundColor: PDF_COLORS.panel }}>
-            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, width: 110, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Дата</th>
-            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, width: 230, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Платформа / Форматы</th>
-            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Тема / Описание</th>
-            <th style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, color: PDF_COLORS.muted, fontWeight: 800, width: 110, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.4, fontSize: 11 }}>Статус</th>
-          </tr>
-        </thead>
-        <tbody>
-          {monthTasks.length === 0 ? (
-            <tr>
-              <td colSpan={4} style={{ textAlign: 'center', padding: 24, color: PDF_COLORS.soft, fontWeight: 600 }}>Нет задач в этом месяце</td>
-            </tr>
-          ) : null}
-          {monthTasks.map(task => {
-            const platform = platforms.find(p => p.id === task.platformId);
-            const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
-            const isCompleted = task.status === 'completed';
-            return (
-              <tr key={task.id} style={{ breakInside: 'avoid' }}>
-                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top', color: '#1e293b', fontWeight: 700 }}>{task.date.split('-').reverse().join('.')}</td>
-                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top' }}>
-                  <div style={{ color: PDF_COLORS.red, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 7 }}>{platform?.name || 'Платформа'}</div>
-                  <div style={{ color: '#334155', fontSize: 12, fontWeight: 600, lineHeight: 1.45 }}>{taskKpis.map(k => k.title).join(', ') || 'Без формата'}</div>
-                </td>
-                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top' }}>
-                  <div style={{ color: PDF_COLORS.ink, fontSize: 13, fontWeight: 800, marginBottom: 7, lineHeight: 1.35 }}>{task.title}</div>
-                  <div style={{ color: PDF_COLORS.muted, fontSize: 12, fontWeight: 600, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{String(task.text || '')}</div>
-                </td>
-                <td style={{ border: `1px solid ${PDF_COLORS.line}`, padding: 12, verticalAlign: 'top', textAlign: 'center', fontSize: 12, fontWeight: 800 }}>
-                  <span style={{ color: isCompleted ? PDF_COLORS.green : PDF_COLORS.amber, backgroundColor: isCompleted ? PDF_COLORS.greenSoft : PDF_COLORS.amberSoft, padding: '5px 8px', borderRadius: 6, display: 'inline-block' }}>
+      <PdfSectionTitle color={PDF_COLORS.red}>Список публикаций</PdfSectionTitle>
+
+      {monthTasks.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 24, color: PDF_COLORS.soft, fontWeight: 700, border: `1px dashed ${PDF_COLORS.line}`, borderRadius: 14 }}>Нет задач в этом месяце</div>
+      ) : null}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {monthTasks.map((task, index) => {
+          const platform = platforms.find(p => p.id === task.platformId);
+          const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
+          const isCompleted = task.status === 'completed';
+          return (
+            <div key={task.id} className="pdf-avoid-break" style={{ border: `1px solid ${PDF_COLORS.line}`, borderRadius: 14, backgroundColor: '#ffffff', overflow: 'hidden', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr 92px', gap: 10, alignItems: 'center', backgroundColor: PDF_COLORS.panel, borderBottom: `1px solid ${PDF_COLORS.line}`, padding: '9px 11px' }}>
+                <div style={{ color: PDF_COLORS.ink, fontSize: 12, fontWeight: 900 }}>{formatPdfDate(task.date)}</div>
+                <div style={{ minWidth: 0 }}>
+                  <PdfPill color={PDF_COLORS.red} bg={PDF_COLORS.redSoft}>{platform?.name || 'Платформа'}</PdfPill>
+                  {taskKpis.length ? taskKpis.map(k => <PdfPill key={k.id} color={PDF_COLORS.blue} bg={PDF_COLORS.blueSoft}>{k.title}</PdfPill>) : <PdfPill>Без формата</PdfPill>}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ color: isCompleted ? PDF_COLORS.green : PDF_COLORS.amber, backgroundColor: isCompleted ? PDF_COLORS.greenSoft : PDF_COLORS.amberSoft, border: `1px solid ${isCompleted ? '#bbf7d0' : '#fde68a'}`, padding: '5px 8px', borderRadius: 999, display: 'inline-block', fontSize: 10, fontWeight: 900 }}>
                     {isCompleted ? 'Готово' : 'В плане'}
                   </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+              </div>
+
+              <div style={{ padding: '12px 14px 14px' }}>
+                <div style={{ color: PDF_COLORS.soft, fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 5 }}>Публикация #{index + 1}</div>
+                <div style={{ color: PDF_COLORS.ink, fontSize: 14, fontWeight: 900, lineHeight: 1.35, marginBottom: 7, wordBreak: 'break-word' }}>{cleanPdfText(task.title, 'Без названия')}</div>
+                <div style={{ color: PDF_COLORS.muted, fontSize: 12, fontWeight: 600, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>{cleanPdfText(task.text, 'Описание не добавлено.')}</div>
+                {task.link ? (
+                  <div style={{ marginTop: 9, color: PDF_COLORS.blue, fontSize: 10.5, lineHeight: 1.4, fontWeight: 700, wordBreak: 'break-all' }}>Ссылка: {task.link}</div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
-
