@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v15-dynamic-months-2026-06-13';
+const APP_VERSION = 'd1-sync-v16-dark-theme-pdf-fix';
 
 const Instagram = Globe;
 const Facebook = Users;
@@ -21,7 +21,6 @@ const INITIAL_USERS = {
   admin: { id: 1, login: 'admin', role: 'admin', pass: '@Pokiza4565@', name: 'Руководитель', email: 'ceo@pokiza.com' },
   smm: { id: 2, login: 'smm', role: 'smm', pass: '@Smm4565@', name: 'SMM Специалист', email: 'smm@pokiza.com' }
 };
-
 
 const RU_MONTH_NAMES = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -63,7 +62,6 @@ const buildTimelineMonths = (centerValue, count = 12) => {
     return { value, label: getMonthLabel(value) };
   });
 };
-
 
 const PLATFORM_ICONS = [
   { id: 'instagram', icon: Instagram, name: 'Instagram' },
@@ -187,8 +185,8 @@ function Toast({ message, type, onClose }) {
 function Modal({ title, onClose, children, maxWidth = 'max-w-md' }) {
   return (
     <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-200" onMouseDown={onClose}>
-      <div className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-700`} onMouseDown={e => e.stopPropagation()}>
-        <div className="px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center shrink-0">
+      <div className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-700 transition-colors`} onMouseDown={e => e.stopPropagation()}>
+        <div className="px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center shrink-0 transition-colors">
           <h3 className="font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate pr-3">{title}</h3>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95 shrink-0"><X size={20}/></button>
         </div>
@@ -205,7 +203,7 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
       <div className="space-y-6">
         <p className="text-slate-600 dark:text-slate-300 text-sm font-medium">{message}</p>
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors active:scale-95 text-slate-700 dark:text-slate-300">Отмена</button>
+          <button onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors active:scale-95 text-slate-700 dark:text-slate-200">Отмена</button>
           <button onClick={() => { onConfirm(); onCancel(); }} className="px-4 py-2 text-sm font-medium rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95 shadow-sm shadow-red-600/20">Подтвердить</button>
         </div>
       </div>
@@ -281,24 +279,7 @@ export default function AppWrapper() {
       document.head.appendChild(themeMeta);
     }
     themeMeta.content = theme === 'dark' ? '#0f172a' : '#FAFAFA';
-
-    if (!document.querySelector('link[rel="manifest"]')) {
-       const manifest = {
-          name: appSettings.appName || "Pokiza SMM",
-          short_name: appSettings.appName || "Pokiza",
-          display: "standalone",
-          background_color: "#FAFAFA",
-          theme_color: "#FAFAFA",
-          icons: [{ src: "https://cdn-icons-png.flaticon.com/512/3254/3254068.png", sizes: "512x512", type: "image/png" }]
-       };
-       const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-       const manifestURL = URL.createObjectURL(blob);
-       const link = document.createElement('link');
-       link.rel = 'manifest';
-       link.href = manifestURL;
-       document.head.appendChild(link);
-    }
-  }, [theme, appSettings.appName]);
+  }, [theme]);
 
   useEffect(() => {
     localStorage.setItem('pokiza_settings', JSON.stringify(appSettings));
@@ -325,10 +306,10 @@ function LoginScreen({ usersDb, onLogin, theme, appSettings }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-300">
       <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm w-full max-w-sm border border-slate-100 dark:border-slate-700 transition-colors duration-300">
         <div className="text-center mb-8 flex flex-col items-center">
-          <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl mx-auto flex items-center justify-center mb-4 overflow-hidden">
+          <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl mx-auto flex items-center justify-center mb-4 overflow-hidden transition-colors">
             <AppLogo settings={appSettings} size={28} />
           </div>
           <h1 className="text-2xl font-bold text-red-600 tracking-tight mb-1">{appSettings.appName || 'ПОКИЗА'}</h1>
@@ -412,9 +393,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: () => {} });
   
   const [printMode, setPrintMode] = useState(null);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
-  const [pdfFileName, setPdfFileName] = useState('Pokiza_Report.pdf');
-  
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const taskSaveLockRef = useRef(false);
@@ -434,6 +412,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     localStorage.setItem('pokiza_analytics_drafts', JSON.stringify(analyticsDrafts));
   }, [analyticsDrafts]);
 
+  // Глобальная блокировка скролла для модалок
   useEffect(() => {
     if (activeModal || selectedKpiForDetails || confirmDialog.isOpen) {
       document.body.style.overflow = 'hidden';
@@ -529,19 +508,12 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     return pa && pa.isSubmitted ? pa : null;
   }, [analytics, currentMonth]);
 
-  const handlePdfAction = useCallback(async (mode, actionType = 'download') => {
+  const handlePdfAction = useCallback(async (mode) => {
     const fileName = `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`;
-    const isPreview = actionType === 'preview';
-    setPdfFileName(fileName);
-    setPdfPreviewUrl(null);
-    showToast(isPreview ? 'Генерация предпросмотра...' : 'Подготовка PDF...', 'success');
-
-    if (isPreview) {
-      setActiveModal('pdfPreview');
-    }
+    showToast('Подготовка PDF...', 'success');
 
     setPrintMode(mode);
-    await new Promise(resolve => setTimeout(resolve, 450));
+    await new Promise(resolve => setTimeout(resolve, 800)); // Даем DOM отрендериться
 
     const element = document.getElementById('pdf-content-wrapper');
     if (!element) {
@@ -559,7 +531,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
         const opt = {
           margin: [10, 10, 10, 10],
           filename: fileName,
-          image: { type: 'jpeg', quality: 0.95 },
+          image: { type: 'jpeg', quality: 0.98 },
           html2canvas: {
             scale,
             useCORS: true,
@@ -574,59 +546,35 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
         };
 
         const blob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
-        const url = URL.createObjectURL(blob);
-        setPdfPreviewUrl(url);
         setPrintMode(null);
 
-        if (isPreview) {
-          showToast('PDF готов к просмотру');
-          return;
-        }
-
         const file = typeof File !== 'undefined' ? new File([blob], fileName, { type: 'application/pdf' }) : null;
-        const canShareFile = Boolean(
-          file &&
-          navigator.share &&
-          navigator.canShare &&
-          navigator.canShare({ files: [file] })
-        );
-
-        if (canShareFile) {
+        
+        // Native Share on Mobile
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
-            await navigator.share({
-              files: [file],
-              title: fileName,
-              text: 'PDF отчет Pokiza SMM'
-            });
-            showToast('PDF готов для сохранения или отправки');
+            await navigator.share({ files: [file], title: fileName });
+            showToast('Успешно');
             return;
           } catch (shareError) {
-            if (shareError?.name === 'AbortError') {
-              showToast('Отправка отменена', 'error');
-              return;
-            }
-            console.warn('Share failed, fallback to download:', shareError);
+            console.warn('Share cancelled or failed', shareError);
           }
         }
 
+        // Standard Download
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
-        link.rel = 'noopener';
         document.body.appendChild(link);
         link.click();
         link.remove();
+        URL.revokeObjectURL(url);
+        showToast('Файл скачан', 'success');
 
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-        if (isMobile) {
-          setActiveModal('pdfPreview');
-          showToast('PDF готов. Нажмите «Скачать PDF» или откройте меню браузера, чтобы поделиться.');
-        } else {
-          showToast('Файл успешно скачан');
-        }
       } catch (err) {
-        console.error('PDF Generator Error:', err);
-        showToast('Ошибка при создании PDF', 'error');
+        console.error('PDF Error:', err);
+        showToast('Критическая ошибка генератора', 'error');
         setPrintMode(null);
       }
     };
@@ -638,7 +586,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = processPdf;
       script.onerror = () => {
-        showToast('Не удалось загрузить библиотеку для PDF', 'error');
+        showToast('Не удалось загрузить генератор', 'error');
         setPrintMode(null);
       };
       document.body.appendChild(script);
@@ -878,7 +826,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
   return (
     <>
-    <div className={`h-screen w-full overflow-hidden font-sans flex text-sm transition-colors duration-300 ${printMode ? 'opacity-0 pointer-events-none absolute' : ''} ${theme==='dark'?'bg-slate-900 text-slate-200':'bg-[#FAFAFA] text-slate-800'}`}>
+    <div className={`h-screen w-full overflow-hidden font-sans flex text-sm transition-colors duration-300 ${printMode ? 'opacity-0 pointer-events-none absolute' : ''} ${theme==='dark'?'bg-slate-900 text-slate-200':'bg-slate-50 text-slate-800'}`}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog({isOpen: false})} />
 
@@ -893,7 +841,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                <>
                  <h1 className="text-lg font-bold tracking-tight text-red-600 flex items-center gap-2">
                    <AppLogo settings={appSettings} size={20} />
-                   <span className="truncate">{appSettings.appName || 'ПОКИЗА'}</span>
+                   <span className="truncate text-slate-900 dark:text-white">{appSettings.appName || 'ПОКИЗА'}</span>
                  </h1>
                  <button onClick={() => setIsSidebarExpanded(false)} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"><PanelLeftClose size={18}/></button>
                </>
@@ -922,8 +870,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                {isSidebarExpanded && (
                  <>
                    <div className="flex-1 overflow-hidden cursor-pointer group" onClick={() => {setEditingItem(user); setActiveModal('editProfile'); setIsSidebarExpanded(false);}}>
-                     <div className="text-sm font-semibold leading-tight truncate group-hover:text-red-500 transition-colors">{user.name}</div>
-                     <div className="text-[11px] font-medium text-slate-500 capitalize mt-0.5">{user.role === 'admin' ? 'Администратор' : 'SMM'}</div>
+                     <div className="text-sm font-semibold leading-tight truncate text-slate-900 dark:text-slate-200 group-hover:text-red-500 transition-colors">{user.name}</div>
+                     <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 capitalize mt-0.5">{user.role === 'admin' ? 'Администратор' : 'SMM'}</div>
                    </div>
                    <button onClick={onLogout} className="text-slate-400 hover:text-red-500 transition-colors p-2 bg-slate-50 dark:bg-slate-700 rounded-xl active:scale-95" title="Выйти"><LogOut size={16} /></button>
                  </>
@@ -937,23 +885,23 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
       <div className="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300 min-w-0 md:ml-0">
         
         {/* Mobile Top Header */}
-        <header className={`md:hidden h-14 flex items-center justify-between px-5 shrink-0 border-b z-30 ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
+        <header className={`md:hidden h-14 flex items-center justify-between px-5 shrink-0 border-b z-30 transition-colors ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
            <div className="flex items-center gap-2">
              <AppLogo settings={appSettings} size={22} />
              <span className="font-bold tracking-tight text-lg text-slate-900 dark:text-white truncate max-w-[150px]">{appSettings.appName || 'ПОКИЗА'}</span>
            </div>
            <div className="flex items-center gap-4">
-             <button onClick={()=>setTheme(theme==='light'?'dark':'light')} className="text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95">
+             <button onClick={()=>setTheme(theme==='light'?'dark':'light')} className="text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-colors">
                {theme === 'light' ? <Moon size={20}/> : <Sun size={20}/>}
              </button>
-             <div onClick={() => setActiveModal('mobileMenu')} className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm uppercase cursor-pointer ${theme==='dark'?'bg-slate-700 border-slate-600 text-red-400':'bg-slate-50 border-slate-200 text-red-600'}`}>
+             <div onClick={() => setActiveModal('mobileMenu')} className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm uppercase cursor-pointer transition-colors ${theme==='dark'?'bg-slate-700 border-slate-600 text-red-400':'bg-slate-50 border-slate-200 text-red-600'}`}>
                 {user.name[0]}
              </div>
            </div>
         </header>
 
         {/* Desktop Header */}
-        <header className={`hidden md:flex h-16 border-b items-center justify-between px-8 shrink-0 z-30 ${theme==='dark'?'bg-slate-900/80 border-slate-700':'bg-white/80 border-slate-100'} backdrop-blur-md`}>
+        <header className={`hidden md:flex h-16 border-b items-center justify-between px-8 shrink-0 z-30 transition-colors ${theme==='dark'?'bg-slate-800/80 border-slate-700':'bg-white/80 border-slate-100'} backdrop-blur-md`}>
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             {NAV_ITEMS.find(i => i.id === activeTab)?.label}
           </h2>
@@ -968,7 +916,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
             
             {/* Mobile Context Header */}
             <div className="md:hidden flex items-center justify-between mb-2">
-               <h2 className="text-base font-semibold">{NAV_ITEMS.find(i => i.id === activeTab)?.label}</h2>
+               <h2 className="text-base font-semibold dark:text-slate-100">{NAV_ITEMS.find(i => i.id === activeTab)?.label}</h2>
                <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} theme={theme} />
             </div>
 
@@ -987,10 +935,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                 </div>
 
                 <section>
-                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Target size={20} className="text-red-500"/> Выполнение плана</h2>
+                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-slate-100"><Target size={20} className="text-red-500"/> Выполнение плана</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {kpiProgress.map((kpi) => (
-                      <div key={kpi.id} onClick={() => setSelectedKpiForDetails(kpi)} className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between min-h-[140px] group active:scale-95 ${theme==='dark'?'bg-slate-800 border-slate-700 hover:border-slate-600':'bg-white border-slate-100 hover:border-slate-300 hover:shadow-md shadow-sm'}`}>
+                      <div key={kpi.id} onClick={() => { setSelectedKpiForDetails(null); setTimeout(() => setSelectedKpiForDetails(kpi), 10); }} className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between min-h-[140px] group active:scale-95 ${theme==='dark'?'bg-slate-800 border-slate-700 hover:border-slate-600':'bg-white border-slate-100 hover:border-slate-300 hover:shadow-md shadow-sm'}`}>
                         <div>
                            <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider mb-2 flex items-center gap-1.5 line-clamp-1">{getPlatformIcon({name: kpi.platformName, iconName: kpi.platformIconName}, 12)} {kpi.platformName}</div>
                            <h3 className="text-sm font-semibold leading-tight text-slate-800 dark:text-slate-200 break-words line-clamp-2">{kpi.title}</h3>
@@ -1012,7 +960,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
                 <section>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold flex items-center gap-2"><CheckSquare size={20} className="text-blue-500"/> Список задач</h2>
+                    <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-slate-100"><CheckSquare size={20} className="text-blue-500"/> Список задач</h2>
                   </div>
                   <div className={`border rounded-3xl shadow-sm overflow-hidden ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
                     {monthTasks.filter(t => selectedDashboardPlatform === 'all' || t.platformId === selectedDashboardPlatform).length === 0 ? (
@@ -1044,14 +992,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
               <div className="animate-in fade-in space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2">
                   <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2"><FileText size={20} className="text-orange-500"/> Контент-план</h2>
+                    <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-slate-100"><FileText size={20} className="text-orange-500"/> Контент-план</h2>
                     <p className="text-xs text-slate-500 mt-1 font-medium">Таблица планирования идей и форматов</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <button onClick={() => handlePdfAction('plan', 'preview')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-base md:text-sm font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
-                      <Eye size={16}/> Предпросмотр
-                    </button>
-                    <button onClick={() => handlePdfAction('plan', 'download')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-base md:text-sm font-semibold rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors active:scale-95">
+                    <button onClick={() => handlePdfAction('plan')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-base md:text-sm font-semibold rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors active:scale-95">
                       <Download size={16}/> Скачать PDF
                     </button>
                   </div>
@@ -1083,12 +1028,12 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                         onDrop={(e) => { e.preventDefault(); handleDropTask(task.id, task.date); }}
                         className={`p-4 rounded-3xl border shadow-sm transition-all cursor-grab active:cursor-grabbing ${draggedTask?.id === task.id ? 'opacity-50 ring-2 ring-red-500' : ''} ${isDragOver && draggedTask?.id !== task.id ? 'border-red-500 bg-red-50 dark:bg-red-500/10' : ''} ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}
                       >
-                        <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-start justify-between gap-3 mb-3 cursor-pointer group" onClick={() => {setEditingItem(task); setActiveModal('viewTask');}}>
                           <div className="flex gap-3 w-full">
-                            <div className="text-slate-300 dark:text-slate-500 mt-0.5" onClick={(e) => e.stopPropagation()}><GripVertical size={16}/></div>
+                            <div className="text-slate-300 dark:text-slate-600 mt-0.5" onClick={(e) => e.stopPropagation()}><GripVertical size={16}/></div>
                             <div className="min-w-0">
                               <div className="text-[10px] font-semibold uppercase text-slate-400 mb-1">{task.date.split('-').reverse().join('.')}</div>
-                              <h3 className="font-semibold text-base md:text-sm text-slate-900 dark:text-slate-200 break-words">{task.title}</h3>
+                              <h3 className="font-semibold text-base md:text-sm text-slate-900 dark:text-slate-200 break-words group-hover:text-blue-500 transition-colors">{task.title}</h3>
                             </div>
                           </div>
                           {task.status === 'completed' ? (
@@ -1106,10 +1051,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                             return <span key={i} className={`text-[10px] font-medium px-2 py-1 rounded-lg border inline-flex items-center gap-1.5 ${theme==='dark' ? `bg-slate-700 ${colorClass.border} ${colorClass.text}` : `bg-white shadow-sm ${colorClass.border} ${colorClass.text}`}`}><div className={`w-1.5 h-1.5 rounded-full ${colorClass.bg}`}></div>{k.title}</span>
                           })}
                         </div>
-                        {task.text && <div className="text-sm md:text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words pl-7 whitespace-pre-wrap">{renderTextWithLinks(task.text)}</div>}
+                        {task.text && <div className="text-sm md:text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words pl-7 whitespace-pre-wrap cursor-pointer" onClick={() => {setEditingItem(task); setActiveModal('viewTask');}}>{renderTextWithLinks(task.text)}</div>}
                         <div className="flex justify-end gap-2">
-                          <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-2 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-700 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
-                          <button onClick={()=> deleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-700 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
+                          <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-2 bg-slate-100 text-slate-600 hover:text-blue-500 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
+                          <button onClick={()=> deleteTask(task.id)} className="p-2 bg-red-50 text-red-500 hover:bg-red-100 dark:text-red-400 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
                         </div>
                       </div>
                     )
@@ -1148,10 +1093,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                                onDragLeave={() => setDragOverId(null)}
                                onDragOver={(e) => e.preventDefault()}
                                onDrop={(e) => { e.preventDefault(); handleDropTask(task.id, task.date); }}
-                               className={`transition-colors group cursor-grab active:cursor-grabbing ${draggedTask?.id === task.id ? 'opacity-40 bg-slate-100 dark:bg-slate-700' : ''} ${isDragOver && draggedTask?.id !== task.id ? 'bg-red-50 dark:bg-red-500/10 border-t-2 border-red-500' : (theme==='dark'?'hover:bg-slate-700/50':'hover:bg-slate-50/50')}`}
+                               className={`transition-colors group cursor-pointer active:cursor-grabbing ${draggedTask?.id === task.id ? 'opacity-40 bg-slate-100 dark:bg-slate-700' : ''} ${isDragOver && draggedTask?.id !== task.id ? 'bg-red-50 dark:bg-red-500/10 border-t-2 border-red-500' : (theme==='dark'?'hover:bg-slate-700/50':'hover:bg-slate-50/50')}`}
+                               onClick={() => { setEditingItem(task); setActiveModal('viewTask'); }}
                              >
                                 <td className="p-4 align-top" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 cursor-grab">
                                     <GripVertical size={16} className="text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors"/>
                                     <div className="font-medium text-sm text-slate-800 dark:text-slate-300">{task.date.split('-').reverse().join('.')}</div>
                                   </div>
@@ -1168,7 +1114,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                                   </div>
                                 </td>
                                 <td className="p-4 align-top">
-                                  <div className="font-semibold text-sm mb-1.5 text-slate-800 dark:text-slate-200">{task.title}</div>
+                                  <div className="font-semibold text-sm mb-1.5 text-slate-800 dark:text-slate-200 group-hover:text-blue-500 transition-colors">{task.title}</div>
                                   {task.text && <div className="text-xs font-medium text-slate-500 whitespace-pre-wrap">{renderTextWithLinks(task.text)}</div>}
                                 </td>
                                 <td className="p-4 text-right align-top" onClick={(e) => e.stopPropagation()}>
@@ -1211,14 +1157,13 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                 <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
                   <div className={`mb-8 border-b pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${theme==='dark'?'border-slate-700':'border-slate-100'}`}>
                     <div>
-                      <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 size={20} className="text-indigo-500"/> Сводка за {getMonthLabel(currentMonth)}</h2>
+                      <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-slate-100"><BarChart3 size={20} className="text-indigo-500"/> Сводка за {getMonthLabel(currentMonth)}</h2>
                       <p className="text-base md:text-xs text-slate-500 mt-1 font-medium">Аналитический отчет по итогам месяца</p>
                     </div>
                     {currentAnalytics.isSubmitted ? (
                       <div className="flex flex-wrap sm:flex-nowrap items-center sm:justify-end gap-2 w-full sm:w-auto">
                         <span className="px-3 py-2 bg-green-500/10 text-green-600 text-[11px] font-semibold uppercase tracking-wider rounded-xl border border-green-500/20 flex items-center gap-1.5"><Lock size={14}/> Отчет сдан</span>
-                        <button onClick={() => handlePdfAction('analytics', 'preview')} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center gap-1.5 active:scale-95"><Eye size={14}/> Превью</button>
-                        <button onClick={() => handlePdfAction('analytics', 'download')} className="px-3 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center gap-1.5 active:scale-95"><Download size={14}/> Скачать</button>
+                        <button onClick={() => handlePdfAction('analytics')} className="px-3 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center gap-1.5 active:scale-95"><Download size={14}/> Скачать PDF</button>
                         {isAdmin && <button onClick={() => saveAnalytics({ ...currentAnalytics, isSubmitted: false })} className="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors flex items-center gap-1.5 active:scale-95"><Unlock size={14}/> Открыть</button>}
                       </div>
                     ) : (
@@ -1247,7 +1192,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
               <div className="space-y-6 animate-in fade-in">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2">
                     <div>
-                      <h2 className="text-lg font-semibold flex items-center gap-2"><Layers size={20} className="text-teal-500"/> Платформы и Форматы (KPI)</h2>
+                      <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-slate-100"><Layers size={20} className="text-teal-500"/> Платформы и Форматы (KPI)</h2>
                       <p className="text-base md:text-xs text-slate-500 mt-1 font-medium">Управление площадками и плановыми показателями контента</p>
                     </div>
                     <button onClick={() => { setEditingItem({id:''}); setActiveModal('editPlatform'); }} className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-base md:text-sm font-semibold rounded-xl transition-transform active:scale-95 shadow-sm">
@@ -1287,13 +1232,13 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                                  {kpis.filter(k=>k.platformId === p.id).map(kpi => {
                                     const colorClass = getFormatColor(kpi);
                                     return (
-                                     <div key={kpi.id} className={`flex justify-between items-center p-3.5 rounded-2xl border transition-all hover:shadow-sm ${theme==='dark'?'bg-slate-700/50 border-slate-600':'bg-white border-slate-100 shadow-sm'}`}>
+                                     <div key={kpi.id} className={`flex justify-between items-center p-3.5 rounded-2xl border transition-all hover:shadow-sm ${theme==='dark'?'bg-slate-800/50 border-slate-600':'bg-white border-slate-100 shadow-sm'}`}>
                                        <div className="flex items-center gap-3">
                                           <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${colorClass.bg}`}></div>
                                           <span className="font-medium text-sm text-slate-800 dark:text-slate-200">{kpi.title}</span>
                                        </div>
                                        <div className="flex items-center gap-2.5 shrink-0">
-                                         <span className={`text-base md:text-xs font-semibold px-2.5 py-1 rounded-lg ${theme==='dark'?'bg-slate-800 text-slate-300':'bg-slate-100 text-slate-600'}`}>{kpi.target} шт/мес</span>
+                                         <span className={`text-base md:text-xs font-semibold px-2.5 py-1 rounded-lg ${theme==='dark'?'bg-slate-900 text-slate-300':'bg-slate-100 text-slate-600'}`}>{kpi.target} шт/мес</span>
                                          <button onClick={(e) => { e.stopPropagation(); setEditingItem(kpi); setActiveModal('editKpi'); }} className="text-slate-400 hover:text-blue-500 transition-colors p-1 active:scale-95"><Edit2 size={14}/></button>
                                          <button onClick={(e) => { e.stopPropagation(); deleteKpi(kpi.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1 active:scale-95"><Trash2 size={14}/></button>
                                        </div>
@@ -1314,7 +1259,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
             {activeTab === 'settings' && (
               <div className="space-y-6 animate-in fade-in pb-10">
                 <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm max-w-3xl ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
-                  <h2 className="text-lg font-semibold mb-6 flex items-center gap-2"><Settings size={20} className="text-slate-500"/> Системные настройки</h2>
+                  <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 dark:text-slate-100"><Settings size={20} className="text-slate-500"/> Системные настройки</h2>
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl border dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 gap-4">
                       <div>
@@ -1350,7 +1295,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                 {isAdmin && (
                   <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm max-w-3xl ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-lg font-semibold flex items-center gap-2"><Users size={20} className="text-blue-500"/> Пользователи системы</h2>
+                      <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-slate-100"><Users size={20} className="text-blue-500"/> Пользователи системы</h2>
                       <button onClick={() => { setEditingItem(null); setActiveModal('userModal'); }} className="text-base md:text-xs bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm flex items-center gap-2 hover:opacity-90 transition-transform active:scale-95"><Plus size={16}/> Добавить</button>
                     </div>
                     <div className={`border rounded-2xl overflow-hidden divide-y ${theme==='dark'?'divide-slate-700 border-slate-700':'divide-slate-100 border-slate-100'}`}>
@@ -1389,7 +1334,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
               ))}
               
               <div className="relative -top-5 z-50">
-                 <button type="button" aria-label="Добавить задачу" onClick={() => { setActiveTab('content-plan'); setEditingItem({ title: '', text: '', date: `${currentMonth}-01`, platformId: platforms[0]?.id || '', kpiIds: [], link: '' }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-slate-900">
+                 <button onClick={() => { setEditingItem({ title: '', date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-slate-900">
                     <Plus size={28} strokeWidth={2.5} />
                  </button>
               </div>
@@ -1404,48 +1349,287 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
         </nav>
       </div>
 
-      {/* Модальное окно предпросмотра PDF */}
-      {activeModal === 'pdfPreview' && (
-        <Modal title="Предпросмотр документа" onClose={() => {setActiveModal(null); setPdfPreviewUrl(null);}} maxWidth="max-w-4xl">
-          {pdfPreviewUrl ? (
-            <iframe src={pdfPreviewUrl} className="w-full h-[65vh] rounded-xl border border-slate-200 dark:border-slate-700" title="PDF Preview" />
-          ) : (
-            <div className="flex flex-col justify-center items-center h-[65vh] gap-4 text-slate-500">
-               <div className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-               <p className="font-medium text-sm">Формируем документ...</p>
+      {/* Модальные окна */}
+      
+      {selectedKpiForDetails && (() => {
+        const platform = platforms.find(p => p.id === selectedKpiForDetails.platformId);
+        const relatedTasks = monthTasks.filter(t => t.kpiIds?.includes(selectedKpiForDetails.id));
+        const emptySlotsCount = Math.max(0, selectedKpiForDetails.target - relatedTasks.length);
+        const colorClass = getFormatColor(selectedKpiForDetails);
+        
+        return (
+          <Modal title={selectedKpiForDetails.title} onClose={() => setSelectedKpiForDetails(null)} maxWidth="max-w-2xl">
+            <div className="space-y-6">
+              <div className={`flex justify-between items-center p-6 rounded-3xl ${theme==='dark'?'bg-slate-700/50 border border-slate-600':'bg-slate-50 border border-slate-100'}`}>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5 text-slate-500">{getPlatformIcon(platform, 14)} {platform?.name}</div>
+                  <div className="text-3xl font-bold tracking-tight flex items-baseline gap-2 dark:text-white">
+                    {relatedTasks.length} <span className="text-slate-400 text-lg font-medium">/ {selectedKpiForDetails.target}</span>
+                  </div>
+                </div>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center opacity-20 ${colorClass.bg}`}><Target size={28} className="text-white"/></div>
+              </div>
+              
+              <h4 className="font-semibold text-sm flex justify-between items-center text-slate-800 dark:text-slate-200">
+                Список задач:
+              </h4>
+              <div className={`border rounded-2xl overflow-hidden divide-y ${theme==='dark'?'divide-slate-700 border-slate-700':'divide-slate-100 border-slate-100'}`}>
+                {relatedTasks.map(task => (
+                  <TaskRow key={task.id} task={task} theme={theme} platforms={platforms} kpis={kpis} todayStr={todayStr} onComplete={completeTask} onDelete={() => deleteTask(task.id)} onEdit={() => { setSelectedKpiForDetails(null); setEditingItem(task); setActiveModal('addTask'); }} onView={() => { setSelectedKpiForDetails(null); setEditingItem(task); setActiveModal('viewTask'); }} compact />
+                ))}
+                
+                {Array.from({length: emptySlotsCount}).map((_, idx) => (
+                  <div key={`empty-${idx}`} className={`p-5 flex items-center justify-between border-l-[3px] border-l-transparent hover:border-l-red-500 transition-all cursor-pointer group active:scale-[0.99] ${theme==='dark'?'bg-slate-800 hover:bg-slate-700':'bg-white hover:bg-slate-50'}`}
+                       onClick={() => { setSelectedKpiForDetails(null); setEditingItem({ title: '', kpiIds: [selectedKpiForDetails.id], platformId: selectedKpiForDetails.platformId, date: `${currentMonth}-01` }); setActiveModal('addTask'); }}>
+                    <div className="flex items-center gap-4 text-slate-400">
+                      <div className="w-8 h-8 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-500 flex items-center justify-center shrink-0 group-hover:border-red-500 group-hover:text-red-500 transition-colors"><Plus size={16}/></div>
+                      <span className="text-sm font-medium group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">Свободный слот (добавить задачу)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-          <div className="mt-5 flex flex-col sm:flex-row justify-end gap-3">
-             <button onClick={() => {setActiveModal(null); setPdfPreviewUrl(null);}} className="px-5 py-2.5 rounded-xl border font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 dark:border-slate-600 transition-colors text-sm active:scale-95">Закрыть</button>
-             {pdfPreviewUrl && navigator.share && <button onClick={async () => {
-               try {
-                 const res = await fetch(pdfPreviewUrl);
-                 const blob = await res.blob();
-                 const file = new File([blob], pdfFileName, { type: 'application/pdf' });
-                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                   await navigator.share({ files: [file], title: pdfFileName, text: 'PDF отчет Pokiza SMM' });
-                 } else {
-                   await navigator.share({ title: pdfFileName, url: pdfPreviewUrl });
-                 }
-               } catch (error) {
-                 showToast('Не удалось поделиться PDF', 'error');
-               }
-             }} className="px-6 py-2.5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold rounded-xl text-center shadow-sm active:scale-95 transition-transform text-sm">Поделиться</button>}
-             {pdfPreviewUrl && <a href={pdfPreviewUrl} download={pdfFileName} className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-center shadow-sm active:scale-95 transition-transform text-sm">Скачать PDF</a>}
+          </Modal>
+        );
+      })()}
+
+      {activeModal === 'dayTasks' && editingItem?._date && (
+        <Modal title={`Задачи на ${editingItem._date.split('-').reverse().join('.')}`} onClose={() => {setActiveModal(null); setEditingItem(null);}} maxWidth="max-w-2xl">
+           <div className={`border rounded-2xl overflow-hidden divide-y ${theme==='dark'?'divide-slate-700 border-slate-700':'divide-slate-100 border-slate-100'}`}>
+             {editingItem._tasks.length > 0 ? (
+               editingItem._tasks.map(task => (
+                  <TaskRow key={task.id} task={task} theme={theme} platforms={platforms} kpis={kpis} todayStr={todayStr} onComplete={completeTask} onDelete={() => deleteTask(task.id)} onEdit={() => { setEditingItem(task); setActiveModal('addTask'); }} onView={() => { setEditingItem(task); setActiveModal('viewTask'); }} compact />
+               ))
+             ) : (
+               <div className="p-10 text-center text-slate-400 font-medium text-sm">На этот день задач нет.</div>
+             )}
+           </div>
+           <button onClick={() => { setActiveModal('addTask'); setEditingItem({ title: '', date: editingItem._date, kpiIds: [], platformId: platforms[0]?.id }); }} className="w-full mt-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95">
+              <Plus size={18}/> Запланировать задачу
+           </button>
+        </Modal>
+      )}
+
+      {/* Mobile Drawer Menu */}
+      {activeModal === 'mobileMenu' && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[9999] flex" onMouseDown={() => setActiveModal(null)}>
+          <div className="bg-white dark:bg-slate-800 w-[280px] h-full shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 border-r border-slate-200 dark:border-slate-700" onMouseDown={e => e.stopPropagation()}>
+             <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-lg text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600">{user.name[0]}</div>
+                <div>
+                   <div className="font-bold text-slate-900 dark:text-white line-clamp-1">{user.name}</div>
+                   <div className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize">{user.role === 'admin' ? 'Администратор' : 'SMM специалист'}</div>
+                </div>
+             </div>
+             
+             <div className="flex-1 overflow-y-auto py-3 custom-scrollbar flex flex-col px-3 gap-1.5">
+               <button onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className="flex items-center gap-3 w-full p-3 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
+                  <User size={20} className="text-purple-500"/> Мой профиль
+               </button>
+               {isAdmin && (
+                 <button onClick={() => {setActiveTab('platforms'); setActiveModal(null);}} className="flex items-center gap-3 w-full p-3 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
+                    <Layers size={20} className="text-teal-500"/> Платформы и форматы
+                 </button>
+               )}
+               {isAdmin && (
+                 <button onClick={() => {setActiveTab('settings'); setActiveModal(null);}} className="flex items-center gap-3 w-full p-3 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
+                    <Users size={20} className="text-blue-500"/> Пользователи
+                 </button>
+               )}
+               <button onClick={() => {setActiveTab('settings'); setActiveModal(null);}} className="flex items-center gap-3 w-full p-3 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
+                  <Settings size={20} className="text-slate-500"/> Системные настройки
+               </button>
+             </div>
+             <div className="p-4 border-t border-slate-100 dark:border-slate-700 mt-auto pb-safe">
+               <button onClick={onLogout} className="flex items-center justify-center gap-2 w-full p-3 text-center font-semibold text-red-600 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-xl transition-colors active:scale-95">
+                  <LogOut size={18}/> Выйти из системы
+               </button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && activeModal === 'editBranding' && (
+        <Modal title="Брендинг системы" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold mb-2">Название проекта (SaaS)</label>
+              <input type="text" id="brandName" defaultValue={editingItem?.appName || ''} placeholder="Например: ПОКИЗА" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2">URL Логотипа (опционально)</label>
+              <input type="text" id="brandLogo" defaultValue={editingItem?.logoUrl || ''} placeholder="https://example.com/logo.png" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+              <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Оставьте пустым для стандартного логотипа</p>
+            </div>
+            <button onClick={async () => {
+                const appName = document.getElementById('brandName').value.trim() || 'ПОКИЗА';
+                const logoUrl = document.getElementById('brandLogo').value.trim();
+                try {
+                  await apiRequest('/api/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ appName, logoUrl })
+                  });
+                  setAppSettings({ appName, logoUrl });
+                  if (reloadUsersAndSettings) await reloadUsersAndSettings();
+                  showToast('Настройки бренда сохранены');
+                  setActiveModal(null);
+                } catch (error) {
+                  showToast(error.message || 'Не удалось сохранить настройки бренда', 'error');
+                }
+              }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Применить</button>
           </div>
         </Modal>
       )}
 
+      {isAdmin && activeModal === 'editPlatform' && (
+        <Modal title={editingItem?.id ? 'Редактировать платформу' : 'Новая платформа'} onClose={() => {setActiveModal(null); setEditingItem(null);}}>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold mb-2">Название платформы</label>
+              <input type="text" id="platName" defaultValue={editingItem?.name || ''} placeholder="Например: ВКонтакте" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2">Аккаунт / Ссылка</label>
+              <input type="text" id="platAccount" defaultValue={editingItem?.account || ''} placeholder="@username" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+               <label className="block text-xs font-semibold mb-2">Иконка</label>
+               <div className="grid grid-cols-6 gap-2">
+                 {PLATFORM_ICONS.map(pi => (
+                   <label key={pi.id} className={`flex justify-center items-center p-3 border rounded-xl cursor-pointer transition-colors active:scale-95 ${editingItem?.iconName === pi.id || (!editingItem?.iconName && pi.id === 'globe') ? 'border-red-600 bg-red-50 text-red-600 dark:bg-red-500/10 dark:border-red-500' : (theme==='dark'?'border-slate-700 hover:bg-slate-700':'border-slate-200 hover:bg-slate-50')}`}>
+                     <input type="radio" name="iconName" value={pi.id} className="hidden" defaultChecked={editingItem?.iconName === pi.id} onChange={(e) => setEditingItem({...editingItem, iconName: e.target.value})} />
+                     <pi.icon size={20} strokeWidth={1.5} />
+                   </label>
+                 ))}
+               </div>
+            </div>
+            <button onClick={() => {
+                const name = document.getElementById('platName').value;
+                const account = document.getElementById('platAccount').value;
+                const iconName = editingItem.iconName || 'globe';
+                if(!name) return showToast('Введите название', 'error');
+                savePlatform({ ...(editingItem || {}), name, account, iconName });
+              }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Сохранить платформу</button>
+          </div>
+        </Modal>
+      )}
+
+      {isAdmin && activeModal === 'editKpi' && (
+        <Modal title={editingItem?.id ? 'Редактировать Формат' : 'Новый Формат Контента'} onClose={() => {setActiveModal(null); setEditingItem(null);}}>
+          <div className="space-y-5">
+            <div>
+               <label className="block text-xs font-semibold mb-2">Платформа</label>
+               <select id="kpiPlatform" defaultValue={editingItem?.platformId || platforms[0]?.id} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`}>
+                 {platforms.map(p => <option key={p.id} value={p.id}>{p.name} ({p.account})</option>)}
+               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2">Название формата</label>
+              <input type="text" id="kpiTitle" defaultValue={editingItem?.title || ''} placeholder="Например: Съемка Reels" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2">План на месяц (шт)</label>
+              <input type="text" inputMode="decimal" pattern="[0-9]*" id="kpiTarget" defaultValue={editingItem?.target || 1} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-3 flex items-center gap-2">Цвет <span className="text-[10px] font-medium text-slate-400">(Для календаря)</span></label>
+              <div className="flex flex-wrap gap-3">
+                 {FORMAT_COLORS.map(c => (
+                   <label key={c.id} className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center border-2 transition-all active:scale-95 ${editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue') ? 'border-slate-800 dark:border-white scale-110 shadow-sm' : 'border-transparent hover:scale-105'} ${c.bg}`}>
+                     <input type="radio" name="colorId" value={c.id} className="hidden" defaultChecked={editingItem?.colorId === c.id} onChange={(e) => setEditingItem({...editingItem, colorId: e.target.value})} />
+                     {(editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue')) && <CheckCircle2 size={16} strokeWidth={2.5} className="text-white"/>}
+                   </label>
+                 ))}
+              </div>
+            </div>
+            <button onClick={() => {
+                const title = document.getElementById('kpiTitle').value;
+                const target = Number(document.getElementById('kpiTarget').value.replace(/[^0-9]/g, ''));
+                const platformId = document.getElementById('kpiPlatform').value;
+                const colorId = editingItem.colorId || 'blue';
+                if(!title) return showToast('Введите название', 'error');
+                if(!target || target < 1) return showToast('План должен быть больше 0', 'error');
+                saveKpi({ ...(editingItem || {}), title, target, platformId, colorId });
+              }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Сохранить формат</button>
+          </div>
+        </Modal>
+      )}
+
+      {isAdmin && activeModal === 'userModal' && (
+        <Modal title={editingItem?.login ? 'Редактировать пользователя' : 'Новый пользователь'} onClose={() => {setActiveModal(null); setEditingItem(null);}}>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold mb-2">ФИО</label>
+              <input type="text" id="addUserName" defaultValue={editingItem?.name || ''} placeholder="Иван Иванов" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2">Логин</label>
+              <input type="text" id="addUserLogin" defaultValue={editingItem?.login || ''} placeholder="new_smm" disabled={editingItem?.login === 'admin'} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'} disabled:opacity-50`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2">Пароль</label>
+              <input type="text" id="addUserPass" defaultValue={editingItem?.pass || ''} placeholder="Пароль" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
+            </div>
+            <div>
+               <label className="block text-xs font-semibold mb-2">Роль</label>
+               <select id="addUserRole" defaultValue={editingItem?.role || 'smm'} disabled={editingItem?.login === 'admin'} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'} disabled:opacity-50`}>
+                 <option value="smm">SMM Специалист</option>
+                 <option value="admin">Администратор</option>
+               </select>
+            </div>
+            <button onClick={async () => {
+                const name = document.getElementById('addUserName').value.trim();
+                const login = document.getElementById('addUserLogin').value.trim().toLowerCase();
+                const pass = document.getElementById('addUserPass').value.trim();
+                const role = document.getElementById('addUserRole').value;
+                if(!name || !login || !pass) return showToast('Заполните все поля', 'error');
+
+                if (!editingItem?.login && usersDb[login]) return showToast('Этот логин уже занят', 'error');
+                if (editingItem?.login && editingItem.login !== login && usersDb[login]) return showToast('Этот логин уже занят', 'error');
+
+                try {
+                  if (editingItem?.login && editingItem.login !== login) {
+                    await apiRequest(`/api/users/${encodeURIComponent(editingItem.login)}`, { method: 'DELETE' });
+                  }
+
+                  await apiRequest('/api/users', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      ...editingItem,
+                      id: editingItem?.id || Date.now(),
+                      name,
+                      login,
+                      pass,
+                      role,
+                      email: editingItem?.email || `${login}@pokiza.com`
+                    })
+                  });
+
+                  await loadData(currentMonth, true);
+                  if (reloadUsersAndSettings) await reloadUsersAndSettings();
+                  showToast(editingItem?.login ? 'Пользователь обновлен' : 'Пользователь добавлен');
+                  setActiveModal(null);
+                } catch (error) {
+                  showToast(error.message || 'Не удалось сохранить пользователя', 'error');
+                }
+              }} className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold py-3.5 rounded-xl mt-4 shadow-sm text-sm active:scale-95 transition-transform">
+              {editingItem?.login ? 'Сохранить изменения' : 'Создать пользователя'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Окно Мой профиль */}
       {activeModal === 'editProfile' && editingItem && (
         <Modal title="Мой профиль" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold mb-2">Отображаемое имя</label>
-              <input type="text" id="profileName" defaultValue={editingItem?.name || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="profileName" defaultValue={editingItem?.name || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-slate-50 border-slate-200'}`} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-2">Новый пароль</label>
-              <input type="text" id="profilePass" defaultValue={editingItem?.pass || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
+              <input type="text" id="profilePass" defaultValue={editingItem?.pass || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-slate-50 border-slate-200'}`} />
             </div>
             <button onClick={async () => {
                 const newName = document.getElementById('profileName').value.trim();
@@ -1466,7 +1650,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                 } catch (error) {
                   showToast(error.message || 'Не удалось сохранить профиль', 'error');
                 }
-              }} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-transform">Сохранить изменения</button>
+              }} className="w-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-transform">Сохранить изменения</button>
+              
+             <button onClick={() => { setActiveModal(null); onLogout(); }} className="hidden md:flex w-full bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-colors items-center justify-center gap-2">
+                 <LogOut size={16}/> Выйти из аккаунта
+             </button>
           </div>
         </Modal>
       )}
@@ -1482,7 +1670,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
         />
       )}
 
-      {/* Модальное окно просмотра задачи */}
+      {/* Модальное окно просмотра задачи (Read-Only) */}
       {activeModal === 'viewTask' && editingItem && (
         <Modal title="Просмотр задачи" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
           <div className="space-y-5">
@@ -1541,374 +1729,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
             )}
 
             <div className="flex gap-3 pt-2">
-               <button onClick={() => setActiveModal('addTask')} className="flex-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl text-sm transition-transform active:scale-95 shadow-sm flex justify-center items-center gap-2 border dark:border-white">
-                 <Edit2 size={16}/> Редактировать
-               </button>
-               <button onClick={() => { setActiveModal(null); setEditingItem(null); }} className="px-6 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 font-semibold py-3.5 rounded-xl text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-600">
-                 Закрыть
-               </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {selectedKpiForDetails && (() => {
-        const platform = platforms.find(p => p.id === selectedKpiForDetails.platformId);
-        const relatedTasks = monthTasks.filter(t => t.kpiIds?.includes(selectedKpiForDetails.id));
-        const emptySlotsCount = Math.max(0, selectedKpiForDetails.target - relatedTasks.length);
-        const colorClass = getFormatColor(selectedKpiForDetails);
-        
-        return (
-          <Modal title={selectedKpiForDetails.title} onClose={() => setSelectedKpiForDetails(null)} maxWidth="max-w-2xl">
-            <div className="space-y-6">
-              <div className={`flex justify-between items-center p-6 rounded-3xl ${theme==='dark'?'bg-slate-700/50 border border-slate-600':'bg-slate-50 border border-slate-100'}`}>
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5 text-slate-500">{getPlatformIcon(platform, 14)} {platform?.name}</div>
-                  <div className="text-3xl font-bold tracking-tight flex items-baseline gap-2 dark:text-white">
-                    {relatedTasks.length} <span className="text-slate-400 text-lg font-medium">/ {selectedKpiForDetails.target}</span>
-                  </div>
-                </div>
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center opacity-20 ${colorClass.bg}`}><Target size={28} className="text-white"/></div>
-              </div>
-              
-              <h4 className="font-semibold text-sm flex justify-between items-center text-slate-800 dark:text-slate-200">
-                Список задач:
-              </h4>
-              <div className={`border rounded-2xl overflow-hidden divide-y ${theme==='dark'?'divide-slate-700 border-slate-700':'divide-slate-100 border-slate-100'}`}>
-                {relatedTasks.map(task => (
-                  <TaskRow key={task.id} task={task} theme={theme} platforms={platforms} kpis={kpis} todayStr={todayStr} onComplete={completeTask} onDelete={() => deleteTask(task.id)} onEdit={() => { setEditingItem(task); setActiveModal('addTask'); }} onView={() => { setEditingItem(task); setActiveModal('viewTask'); }} compact />
-                ))}
-                
-                {Array.from({length: emptySlotsCount}).map((_, idx) => (
-                  <div key={`empty-${idx}`} className={`p-5 flex items-center justify-between border-l-[3px] border-l-transparent hover:border-l-red-500 transition-all cursor-pointer group active:scale-[0.99] ${theme==='dark'?'bg-slate-800 hover:bg-slate-700':'bg-white hover:bg-slate-50'}`}
-                       onClick={() => { setEditingItem({ title: '', kpiIds: [selectedKpiForDetails.id], platformId: selectedKpiForDetails.platformId, date: `${currentMonth}-01` }); setActiveModal('addTask'); }}>
-                    <div className="flex items-center gap-4 text-slate-400">
-                      <div className="w-8 h-8 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-500 flex items-center justify-center shrink-0 group-hover:border-red-500 group-hover:text-red-500 transition-colors"><Plus size={16}/></div>
-                      <span className="text-sm font-medium group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">Свободный слот (добавить задачу)</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
-
-      {activeModal === 'dayTasks' && editingItem?._date && (
-        <Modal title={`Задачи на ${editingItem._date.split('-').reverse().join('.')}`} onClose={() => {setActiveModal(null); setEditingItem(null);}} maxWidth="max-w-2xl">
-           <div className={`border rounded-2xl overflow-hidden divide-y ${theme==='dark'?'divide-slate-700 border-slate-700':'divide-slate-100 border-slate-100'}`}>
-             {editingItem._tasks.length > 0 ? (
-               editingItem._tasks.map(task => (
-                  <TaskRow key={task.id} task={task} theme={theme} platforms={platforms} kpis={kpis} todayStr={todayStr} onComplete={completeTask} onDelete={() => deleteTask(task.id)} onEdit={() => { setEditingItem(task); setActiveModal('addTask'); }} onView={() => { setEditingItem(task); setActiveModal('viewTask'); }} compact />
-               ))
-             ) : (
-               <div className="p-10 text-center text-slate-400 font-medium text-sm">На этот день задач нет.</div>
-             )}
-           </div>
-           <button onClick={() => { setActiveModal('addTask'); setEditingItem({ title: '', date: editingItem._date, kpiIds: [], platformId: platforms[0]?.id }); }} className="w-full mt-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95">
-              <Plus size={18}/> Запланировать задачу
-           </button>
-        </Modal>
-      )}
-
-      {/* Mobile Menu Modal (открывается при клике на профиль с телефона) */}
-      {activeModal === 'mobileMenu' && (
-        <Modal title="Меню" onClose={() => setActiveModal(null)} maxWidth="max-w-xs">
-           <div className="flex flex-col gap-2">
-             <div className="flex items-center gap-3 p-4 mb-2 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border dark:border-slate-600">
-                <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center font-bold text-lg text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600">{user.name[0]}</div>
-                <div>
-                   <div className="font-bold text-slate-900 dark:text-white">{user.name}</div>
-                   <div className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize">{user.role === 'admin' ? 'Администратор' : 'SMM специалист'}</div>
-                </div>
-             </div>
-             
-             <button onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className="flex items-center gap-3 w-full p-4 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
-                <User size={20} className="text-blue-500"/> Мой профиль
-             </button>
-             {isAdmin && (
-               <button onClick={() => {setActiveTab('platforms'); setActiveModal(null);}} className="flex items-center gap-3 w-full p-4 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
-                  <Layers size={20} className="text-teal-500"/> Платформы и форматы
-               </button>
-             )}
-             <button onClick={() => {setActiveTab('settings'); setActiveModal(null);}} className="flex items-center gap-3 w-full p-4 text-left font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95">
-                <Settings size={20} className="text-slate-500"/> Системные настройки
-             </button>
-             <div className="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
-             <button onClick={onLogout} className="flex items-center gap-3 w-full p-4 text-left font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors active:scale-95">
-                <LogOut size={20}/> Выйти из системы
-             </button>
-           </div>
-        </Modal>
-      )}
-
-      {isAdmin && activeModal === 'editBranding' && (
-        <Modal title="Брендинг системы" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold mb-2">Название проекта (SaaS)</label>
-              <input type="text" id="brandName" defaultValue={editingItem?.appName || ''} placeholder="Например: ПОКИЗА" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">URL Логотипа (опционально)</label>
-              <input type="text" id="brandLogo" defaultValue={editingItem?.logoUrl || ''} placeholder="https://example.com/logo.png" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-              <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Оставьте пустым для стандартного логотипа</p>
-            </div>
-            <button onClick={async () => {
-                const appName = document.getElementById('brandName').value.trim() || 'ПОКИЗА';
-                const logoUrl = document.getElementById('brandLogo').value.trim();
-                try {
-                  await apiRequest('/api/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({ appName, logoUrl })
-                  });
-                  setAppSettings({ appName, logoUrl });
-                  if (reloadUsersAndSettings) await reloadUsersAndSettings();
-                  showToast('Настройки бренда сохранены');
-                  setActiveModal(null);
-                } catch (error) {
-                  showToast(error.message || 'Не удалось сохранить настройки бренда', 'error');
-                }
-              }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Применить</button>
-          </div>
-        </Modal>
-      )}
-
-      {isAdmin && activeModal === 'editPlatform' && (
-        <Modal title={editingItem?.id ? 'Редактировать платформу' : 'Новая платформа'} onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold mb-2">Название платформы</label>
-              <input type="text" id="platName" defaultValue={editingItem?.name || ''} placeholder="Например: ВКонтакте" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">Аккаунт / Ссылка</label>
-              <input type="text" id="platAccount" defaultValue={editingItem?.account || ''} placeholder="@username" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-               <label className="block text-xs font-semibold mb-2">Иконка</label>
-               <div className="grid grid-cols-6 gap-2">
-                 {PLATFORM_ICONS.map(pi => (
-                   <label key={pi.id} className={`flex justify-center items-center p-3 border rounded-xl cursor-pointer transition-colors active:scale-95 ${editingItem?.iconName === pi.id || (!editingItem?.iconName && pi.id === 'globe') ? 'border-red-600 bg-red-50 text-red-600 dark:bg-red-500/10 dark:border-red-500' : (theme==='dark'?'border-slate-700 hover:bg-slate-700':'border-slate-200 hover:bg-slate-50')}`}>
-                     <input type="radio" name="iconName" value={pi.id} className="hidden" defaultChecked={editingItem?.iconName === pi.id} onChange={(e) => setEditingItem({...editingItem, iconName: e.target.value})} />
-                     <pi.icon size={20} strokeWidth={1.5} />
-                   </label>
-                 ))}
-               </div>
-            </div>
-            <button onClick={() => {
-                const name = document.getElementById('platName').value;
-                const account = document.getElementById('platAccount').value;
-                const iconName = editingItem.iconName || 'globe';
-                if(!name) return showToast('Введите название', 'error');
-                savePlatform({ ...(editingItem || {}), name, account, iconName });
-              }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Сохранить платформу</button>
-          </div>
-        </Modal>
-      )}
-
-      {isAdmin && activeModal === 'editKpi' && (
-        <Modal title={editingItem?.id ? 'Редактировать Формат' : 'Новый Формат Контента'} onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-5">
-            <div>
-               <label className="block text-xs font-semibold mb-2">Платформа</label>
-               <select id="kpiPlatform" defaultValue={editingItem?.platformId || platforms[0]?.id} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`}>
-                 {platforms.map(p => <option key={p.id} value={p.id}>{p.name} ({p.account})</option>)}
-               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">Название формата</label>
-              <input type="text" id="kpiTitle" defaultValue={editingItem?.title || ''} placeholder="Например: Съемка Reels" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">План на месяц (шт)</label>
-              <input type="text" inputMode="decimal" pattern="[0-9]*" id="kpiTarget" defaultValue={editingItem?.target || 1} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-3 flex items-center gap-2">Цвет <span className="text-[10px] font-medium text-slate-400">(Для календаря)</span></label>
-              <div className="flex flex-wrap gap-3">
-                 {FORMAT_COLORS.map(c => (
-                   <label key={c.id} className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center border-2 transition-all active:scale-95 ${editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue') ? 'border-slate-800 dark:border-white scale-110 shadow-sm' : 'border-transparent hover:scale-105'} ${c.bg}`}>
-                     <input type="radio" name="colorId" value={c.id} className="hidden" defaultChecked={editingItem?.colorId === c.id} onChange={(e) => setEditingItem({...editingItem, colorId: e.target.value})} />
-                     {(editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue')) && <CheckCircle2 size={16} strokeWidth={2.5} className="text-white"/>}
-                   </label>
-                 ))}
-              </div>
-            </div>
-            <button onClick={() => {
-                const title = document.getElementById('kpiTitle').value;
-                const target = Number(document.getElementById('kpiTarget').value.replace(/[^0-9]/g, ''));
-                const platformId = document.getElementById('kpiPlatform').value;
-                const colorId = editingItem.colorId || 'blue';
-                if(!title) return showToast('Введите название', 'error');
-                if(!target || target < 1) return showToast('План должен быть больше 0', 'error');
-                saveKpi({ ...(editingItem || {}), title, target, platformId, colorId });
-              }} className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 mt-4 shadow-sm text-sm active:scale-95 transition-transform">Сохранить формат</button>
-          </div>
-        </Modal>
-      )}
-
-      {isAdmin && activeModal === 'userModal' && (
-        <Modal title={editingItem?.login ? 'Редактировать пользователя' : 'Новый пользователь'} onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold mb-2">ФИО</label>
-              <input type="text" id="addUserName" defaultValue={editingItem?.name || ''} placeholder="Иван Иванов" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">Логин</label>
-              <input type="text" id="addUserLogin" defaultValue={editingItem?.login || ''} placeholder="new_smm" disabled={editingItem?.login === 'admin'} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'} disabled:opacity-50`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">Пароль</label>
-              <input type="text" id="addUserPass" defaultValue={editingItem?.pass || ''} placeholder="Пароль" className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-               <label className="block text-xs font-semibold mb-2">Роль</label>
-               <select id="addUserRole" defaultValue={editingItem?.role || 'smm'} disabled={editingItem?.login === 'admin'} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'} disabled:opacity-50`}>
-                 <option value="smm">SMM Специалист</option>
-                 <option value="admin">Администратор</option>
-               </select>
-            </div>
-            <button onClick={async () => {
-                const name = document.getElementById('addUserName').value.trim();
-                const login = document.getElementById('addUserLogin').value.trim().toLowerCase();
-                const pass = document.getElementById('addUserPass').value.trim();
-                const role = document.getElementById('addUserRole').value;
-                if(!name || !login || !pass) return showToast('Заполните все поля', 'error');
-
-                if (!editingItem?.login && usersDb[login]) return showToast('Этот логин уже занят', 'error');
-                if (editingItem?.login && editingItem.login !== login && usersDb[login]) return showToast('Этот логин уже занят', 'error');
-
-                try {
-                  if (editingItem?.login && editingItem.login !== login) {
-                    await apiRequest(`/api/users/${encodeURIComponent(editingItem.login)}`, { method: 'DELETE' });
-                  }
-
-                  await apiRequest('/api/users', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      ...editingItem,
-                      id: editingItem?.id || Date.now(),
-                      name,
-                      login,
-                      pass,
-                      role,
-                      email: editingItem?.email || `${login}@pokiza.com`
-                    })
-                  });
-
-                  await loadData(currentMonth, true);
-                  if (reloadUsersAndSettings) await reloadUsersAndSettings();
-                  showToast(editingItem?.login ? 'Пользователь обновлен' : 'Пользователь добавлен');
-                  setActiveModal(null);
-                } catch (error) {
-                  showToast(error.message || 'Не удалось сохранить пользователя', 'error');
-                }
-              }} className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold py-3.5 rounded-xl mt-4 shadow-sm text-sm active:scale-95 transition-transform">
-              {editingItem?.login ? 'Сохранить изменения' : 'Создать пользователя'}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {activeModal === 'editProfile' && editingItem && (
-        <Modal title="Мой профиль" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold mb-2">Отображаемое имя</label>
-              <input type="text" id="profileName" defaultValue={editingItem?.name || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-2">Новый пароль</label>
-              <input type="text" id="profilePass" defaultValue={editingItem?.pass || ''} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-slate-50 border-slate-200'}`} />
-            </div>
-            <button onClick={async () => {
-                const newName = document.getElementById('profileName').value.trim();
-                const newPass = document.getElementById('profilePass').value.trim();
-                if(!newName || !newPass) return showToast('Заполните все поля', 'error');
-
-                try {
-                  const updatedUser = { ...user, name: newName, pass: newPass };
-                  await apiRequest('/api/users', {
-                    method: 'POST',
-                    body: JSON.stringify(updatedUser)
-                  });
-                  onUpdateUser(updatedUser);
-                  await loadData(currentMonth, true);
-                  if (reloadUsersAndSettings) await reloadUsersAndSettings();
-                  showToast('Данные обновлены');
-                  setActiveModal(null);
-                } catch (error) {
-                  showToast(error.message || 'Не удалось сохранить профиль', 'error');
-                }
-              }} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl mt-2 text-sm active:scale-95 transition-transform">Сохранить изменения</button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Модальное окно просмотра задачи (Read-Only) */}
-      {activeModal === 'viewTask' && editingItem && (
-        <Modal title="Просмотр задачи" onClose={() => {setActiveModal(null); setEditingItem(null);}}>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Тема публикации</label>
-              <div className="text-base font-semibold text-slate-900 dark:text-white leading-snug">{editingItem.title}</div>
-            </div>
-            
-            {editingItem.text && (
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Текст / Сценарий</label>
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">{renderTextWithLinks(editingItem.text)}</div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Дата</label>
-                <div className="text-sm font-semibold text-slate-900 dark:text-white">{editingItem.date.split('-').reverse().join('.')}</div>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Статус</label>
-                <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                   {editingItem.status === 'completed' ? <span className="text-green-600 flex items-center gap-1"><CheckCircle2 size={14}/> Готово</span> : <span className="text-amber-600 flex items-center gap-1"><Clock size={14}/> В плане</span>}
-                </div>
-              </div>
-            </div>
-
-            <div>
-               <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Форматы и Платформа</label>
-               <div className="flex flex-wrap gap-2">
-                  {/* Платформа */}
-                  <span className={`text-[11px] font-semibold uppercase flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600`}>
-                     {getPlatformIcon(platforms.find(p => p.id === editingItem.platformId), 14)} 
-                     {platforms.find(p => p.id === editingItem.platformId)?.name}
-                  </span>
-                  {/* KPI */}
-                  {editingItem.kpiIds?.map((kId, i) => {
-                    const k = kpis.find(x => x.id === kId);
-                    if (!k) return null;
-                    const colorClass = getFormatColor(k);
-                    return (
-                      <span key={i} className={`text-[11px] font-medium px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 bg-white dark:bg-slate-800 ${colorClass.border} ${colorClass.text}`}>
-                        <div className={`w-2 h-2 rounded-full ${colorClass.bg}`}></div>{k.title}
-                      </span>
-                    )
-                  })}
-               </div>
-            </div>
-
-            {editingItem.link && (
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Опубликованная ссылка</label>
-                <a href={editingItem.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 font-medium text-sm flex items-center gap-1.5 break-all bg-blue-50 dark:bg-blue-500/10 p-3 rounded-xl border border-blue-100 dark:border-blue-500/20">
-                   <Paperclip size={14} className="shrink-0"/> {editingItem.link}
-                </a>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-               <button onClick={() => setActiveModal('addTask')} className="flex-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl text-sm transition-transform active:scale-95 shadow-sm flex justify-center items-center gap-2 border border-transparent dark:border-white">
+               <button onClick={() => setActiveModal('addTask')} className="flex-1 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-semibold py-3.5 rounded-xl text-sm transition-transform active:scale-95 shadow-sm flex justify-center items-center gap-2 border border-transparent dark:border-white">
                  <Edit2 size={16}/> Редактировать
                </button>
                <button onClick={() => { setActiveModal(null); setEditingItem(null); }} className="px-6 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 font-semibold py-3.5 rounded-xl text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-600">
@@ -1921,7 +1742,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
     </div>
 
-    {/* Блок для генерации PDF: элемент должен быть видимым для html2canvas, поэтому прячем его за экран, а не через opacity/overflow */}
+    {/* Блок для генерации PDF */}
     {printMode && (
       <div style={{ position: 'fixed', left: '-10000px', top: 0, width: printMode === 'plan' ? '1100px' : '790px', background: '#ffffff', color: '#0f172a', pointerEvents: 'none', zIndex: -1 }}>
         <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 m-0" style={{ width: printMode === 'plan' ? '1100px' : '790px', minHeight: '100px' }}>
@@ -1962,10 +1783,10 @@ const TaskRow = React.memo(function TaskRow({ task, theme, platforms, kpis, onCo
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto shrink-0 mt-1 md:mt-0">
         {!isCompleted ? (
           <div className="flex flex-col sm:flex-row w-full gap-2.5">
-            <input type="text" placeholder="Ссылка..." value={linkInput} onChange={e => setLinkInput(e.target.value)} className={`w-full sm:w-48 md:w-56 px-3 py-2.5 sm:py-2 border text-base md:text-sm font-medium rounded-xl outline-none focus:border-red-600 transition-colors ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-200'}`} />
+            <input type="text" placeholder="Ссылка..." value={linkInput} onChange={e => setLinkInput(e.target.value)} className={`w-full sm:w-48 md:w-56 px-3 py-2.5 sm:py-2 border text-base md:text-sm font-medium rounded-xl outline-none focus:border-red-600 transition-colors ${theme==='dark'?'bg-slate-900 border-slate-700 text-white':'bg-white border-slate-200'}`} />
             <div className="flex gap-2 justify-end">
-              <button onClick={() => onComplete(task.id, linkInput)} className="flex-1 sm:flex-none px-5 py-2.5 sm:py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-sm font-semibold rounded-xl hover:opacity-80 shrink-0 shadow-sm transition-all active:scale-95 flex justify-center items-center">Сдать</button>
-              <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className={`p-2.5 sm:p-2 rounded-xl transition-colors shrink-0 active:scale-95 flex items-center justify-center ${theme==='dark'?'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20':'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}><Edit2 size={18} className="sm:w-4 sm:h-4"/></button>
+              <button onClick={() => onComplete(task.id, linkInput)} className="flex-1 sm:flex-none px-5 py-2.5 sm:py-2 bg-slate-900 dark:bg-slate-100 dark:text-slate-900 text-white text-sm font-semibold rounded-xl hover:opacity-80 shrink-0 shadow-sm transition-all active:scale-95 flex justify-center items-center">Сдать</button>
+              <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className={`p-2.5 sm:p-2 rounded-xl transition-colors shrink-0 active:scale-95 flex items-center justify-center ${theme==='dark'?'bg-slate-800 text-slate-300 hover:bg-slate-700':'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Edit2 size={18} className="sm:w-4 sm:h-4"/></button>
               <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className={`p-2.5 sm:p-2 rounded-xl transition-colors shrink-0 active:scale-95 flex items-center justify-center ${theme==='dark'?'bg-red-500/10 text-red-400 hover:bg-red-500/20':'bg-red-50 text-red-600 hover:bg-red-100'}`}><Trash2 size={18} className="sm:w-4 sm:h-4"/></button>
             </div>
           </div>
@@ -1974,10 +1795,10 @@ const TaskRow = React.memo(function TaskRow({ task, theme, platforms, kpis, onCo
             {task.link ? (
               <a href={task.link} target="_blank" rel="noreferrer" className={`w-full sm:w-auto text-sm font-semibold hover:underline truncate max-w-[200px] flex items-center gap-1.5 px-4 py-2.5 sm:py-1.5 rounded-xl border ${theme==='dark'?'text-blue-400 bg-blue-500/10 border-blue-500/20':'text-blue-600 bg-blue-50 border-blue-100'}`}><Paperclip size={16} className="shrink-0 sm:w-4 sm:h-4"/> <span className="truncate">{task.link}</span></a>
             ) : (
-              <span className="text-sm font-medium text-slate-400 italic">Сдано без ссылки</span>
+              <span className="text-base md:text-sm font-medium text-slate-400 italic">Сдано без ссылки</span>
             )}
             <div className="flex gap-2 w-full sm:w-auto justify-end">
-               <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className={`p-2.5 sm:p-2 rounded-xl transition-colors shrink-0 active:scale-95 flex items-center justify-center ${theme==='dark'?'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20':'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}><Edit2 size={18} className="sm:w-4 sm:h-4"/></button>
+               <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className={`p-2.5 sm:p-2 rounded-xl transition-colors shrink-0 active:scale-95 flex items-center justify-center ${theme==='dark'?'bg-slate-800 text-slate-300 hover:bg-slate-700':'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Edit2 size={18} className="sm:w-4 sm:h-4"/></button>
                <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className={`p-2.5 sm:p-2 rounded-xl transition-colors shrink-0 active:scale-95 flex items-center justify-center ${theme==='dark'?'bg-red-500/10 text-red-400 hover:bg-red-500/20':'bg-red-50 text-red-600 hover:bg-red-100'}`}><Trash2 size={18} className="sm:w-4 sm:h-4"/></button>
             </div>
           </div>
@@ -2011,7 +1832,7 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
   return (
     <tr className={`border-b border-slate-100 dark:border-slate-700 ${theme==='dark'?'bg-slate-800/50':'bg-slate-50/50'}`}>
       <td className="p-3 align-top">
-        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600':'border-slate-200'}`}/>
+        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600 text-white':'border-slate-200'}`}/>
       </td>
       <td className="p-3 space-y-2.5 align-top">
         <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600 text-slate-200':'border-slate-200 text-slate-800'}`}>
@@ -2025,8 +1846,8 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
         )}
       </td>
       <td className="p-3 align-top">
-        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2 text-base md:text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent mb-2.5 ${theme==='dark'?'border-slate-600 placeholder-slate-400':'border-slate-200'}`}/>
-        <textarea rows="1" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} onKeyDown={e=>{if(e.key==='Enter' && e.ctrlKey)handleSave()}} className={`w-full px-4 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-600 placeholder-slate-500':'border-slate-200'}`}/>
+        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2 text-base md:text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent mb-2.5 ${theme==='dark'?'border-slate-600 placeholder-slate-400 text-white':'border-slate-200'}`}/>
+        <textarea rows="1" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} onKeyDown={e=>{if(e.key==='Enter' && e.ctrlKey)handleSave()}} className={`w-full px-4 py-2 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-600 placeholder-slate-500 text-white':'border-slate-200'}`}/>
       </td>
       <td className="p-3 text-right align-top">
          <button onClick={handleSave} disabled={!(data.title || '').trim() || isSubmitting} className="w-full py-2.5 bg-red-600 text-white text-base md:text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
@@ -2060,7 +1881,7 @@ function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) 
     <div className={`p-4 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
       <div className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Быстро добавить в план</div>
       <div className="grid grid-cols-1 gap-3">
-        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600':'border-slate-200'}`}/>
+        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600 text-white':'border-slate-200'}`}/>
         <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600 text-slate-200':'border-slate-200 text-slate-800'}`}>
           {platforms.map(p => <option key={p.id} value={p.id} className="dark:bg-slate-800">{p.name}</option>)}
         </select>
@@ -2070,8 +1891,8 @@ function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) 
             {availableKpis.map(k => <option key={k.id} value={k.id} className="dark:bg-slate-800">{k.title}</option>)}
           </select>
         )}
-        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2.5 text-base md:text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600 placeholder-slate-400':'border-slate-200'}`}/>
-        <textarea rows="2" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-600 placeholder-slate-500':'border-slate-200'}`}/>
+        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2.5 text-base md:text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-600 placeholder-slate-400 text-white':'border-slate-200'}`}/>
+        <textarea rows="2" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-600 placeholder-slate-500 text-white':'border-slate-200'}`}/>
         <button onClick={handleSave} disabled={!(data.title || '').trim() || isSubmitting} className="w-full py-3 bg-red-600 text-white text-base md:text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
       </div>
     </div>
@@ -2121,20 +1942,20 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
       <div className="space-y-5">
         <div>
           <label className="block text-xs font-semibold mb-2 text-slate-700 dark:text-slate-300">Название / Тема</label>
-          <input type="text" placeholder="Например: Съемка Reels с обзором" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600':'bg-slate-50 border-slate-200'}`} />
+          <input type="text" placeholder="Например: Съемка Reels с обзором" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600 text-white':'bg-slate-50 border-slate-200'}`} />
         </div>
         <div>
           <label className="block text-xs font-semibold mb-2 text-slate-700 dark:text-slate-300">Текст / Сценарий</label>
-          <textarea rows="2" placeholder="Опишите задачу..." value={formData.text} onChange={e => setFormData({...formData, text: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 resize-none font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600':'bg-slate-50 border-slate-200'}`} />
+          <textarea rows="2" placeholder="Опишите задачу..." value={formData.text} onChange={e => setFormData({...formData, text: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 resize-none font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600 text-white':'bg-slate-50 border-slate-200'}`} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold mb-2 text-slate-700 dark:text-slate-300">Дата</label>
-            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600':'bg-slate-50 border-slate-200'}`} />
+            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600 text-white':'bg-slate-50 border-slate-200'}`} />
           </div>
           <div>
             <label className="block text-xs font-semibold mb-2 text-slate-700 dark:text-slate-300">Платформа</label>
-            <select value={formData.platformId} onChange={handlePlatformChange} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600':'bg-slate-50 border-slate-200'}`}>
+            <select value={formData.platformId} onChange={handlePlatformChange} className={`w-full px-4 py-2.5 text-base md:text-sm border rounded-xl outline-none focus:border-red-600 font-medium ${theme==='dark'?'bg-slate-800/50 border-slate-600 text-white':'bg-slate-50 border-slate-200'}`}>
               {platforms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
@@ -2155,7 +1976,7 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
                     {formData.kpiIds?.includes(k.id) && <CheckCircle2 size={12} strokeWidth={2.5} className="text-white"/>}
                   </div>
                   <div className={`w-2.5 h-2.5 rounded-full ${colorClass.bg}`}></div>
-                  <span className="text-base md:text-sm font-medium select-none">{k.title}</span>
+                  <span className="text-base md:text-sm font-medium select-none text-slate-800 dark:text-slate-200">{k.title}</span>
                 </label>
               )
             })}
@@ -2195,7 +2016,7 @@ function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick, onDropTask
   return (
     <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2"><CalendarIcon size={20} className="text-blue-500"/> Календарь публикаций</h2>
+        <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-slate-100"><CalendarIcon size={20} className="text-blue-500"/> Календарь публикаций</h2>
         
         {legendItems.length > 0 && (
           <div className="flex flex-wrap gap-2 items-center bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border dark:border-slate-700">
@@ -2254,7 +2075,7 @@ function AnalyticsInputForm({ onSave, onTempSave, currentData, theme }) {
 
   useEffect(() => {
     setData(currentData);
-  }, [currentData]);
+  }, [currentData.isSubmitted, currentData.month]);
 
   const handleLocalChange = (field, val) => {
     setData(prev => ({ ...prev, [field]: val }));
@@ -2304,7 +2125,7 @@ function AnalyticsInputForm({ onSave, onTempSave, currentData, theme }) {
   );
 }
 
-function AnalyticsDashboard({ data, prevData, theme, allData, months, onPrint }) {
+function AnalyticsDashboard({ data, prevData, theme, allData, months }) {
   const chartData = useMemo(() => {
     return months.map(m => {
       const d = allData[m.value];
@@ -2346,23 +2167,33 @@ function AnalyticsDashboard({ data, prevData, theme, allData, months, onPrint })
         {renderStat('ER (%)', data.er, prevData?.er, <TrendingUp size={120} className="text-red-500"/>)}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className={`p-6 rounded-3xl border shadow-sm overflow-hidden ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Динамика за 12 месяцев</h3>
-            <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium active:scale-95"><Download size={14}/> Скачать PDF</button>
-          </div>
-          <div className="h-64 w-full">
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500">Динамика Охвата (12 мес)</h3>
+          <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme==='dark'?'#334155':'#e2e8f0'} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: theme==='dark'?'#94a3b8':'#888', fontSize: 10, fontWeight: 500}} dy={10} />
-                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fill: theme==='dark'?'#94a3b8':'#888', fontSize: 10, fontWeight: 500}} />
-                <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: theme==='dark'?'#94a3b8':'#888', fontSize: 10, fontWeight: 500}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: theme==='dark'?'#94a3b8':'#888', fontSize: 10, fontWeight: 500}} />
                 <RechartsTooltip cursor={{fill: theme==='dark'?'#1e293b':'#f5f5f5'}} contentStyle={{backgroundColor: theme==='dark'?'#1e293b':'#fff', borderColor: theme==='dark'?'#334155':'#e2e8f0', color: theme==='dark'?'#f8fafc':'#0f172a', borderRadius: '16px', border: theme==='dark'?'1px solid #334155':'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: '500'}} />
-                <Bar yAxisId="left" dataKey="reach" fill="#E53935" radius={[4, 4, 0, 0]} name="Охват" />
-                <Bar yAxisId="right" dataKey="followers" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Подписчики" />
+                <Bar dataKey="reach" fill="#E53935" radius={[4, 4, 0, 0]} name="Охват" />
               </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className={`p-6 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500">Рост Подписчиков (12 мес)</h3>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme==='dark'?'#334155':'#e2e8f0'} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: theme==='dark'?'#94a3b8':'#888', fontSize: 10, fontWeight: 500}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: theme==='dark'?'#94a3b8':'#888', fontSize: 10, fontWeight: 500}} domain={['dataMin - 1000', 'dataMax + 1000']}/>
+                <RechartsTooltip contentStyle={{backgroundColor: theme==='dark'?'#1e293b':'#fff', borderColor: theme==='dark'?'#334155':'#e2e8f0', color: theme==='dark'?'#f8fafc':'#0f172a', borderRadius: '16px', border: theme==='dark'?'1px solid #334155':'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: '500'}} />
+                <Line type="monotone" dataKey="followers" stroke="#3B82F6" strokeWidth={3} dot={{r: 5, fill: '#3B82F6', strokeWidth: 2, stroke: theme==='dark'?'#111':'#fff'}} name="Подписчики" />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -2418,17 +2249,22 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, 
       <div className="mb-6 break-inside-avoid">
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-purple-600"/> Динамика за 12 месяцев</h2>
         <div className="border border-slate-200 rounded-2xl p-5 bg-white">
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={comparisonData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 9, fontWeight: 600}} dy={5} />
-                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 9, fontWeight: 500}} />
-                <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 9, fontWeight: 500}} />
-                <Bar yAxisId="left" dataKey="reach" fill="#E53935" radius={[4, 4, 0, 0]} name="Охват" isAnimationActive={false} />
-                <Bar yAxisId="right" dataKey="followers" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Подписчики" isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex items-end justify-between h-40 border-b border-slate-200 pb-2 gap-1.5">
+            {comparisonData.map(item => (
+              <div key={item.name} className="flex flex-col items-center flex-1 h-full justify-end">
+                <div className="flex items-end justify-center gap-1 w-full h-full">
+                  <div className={`w-3 sm:w-4 rounded-t-md ${item.hasData ? 'bg-red-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(5, (item.reach / maxReach) * 100)}%` : '5px' }}></div>
+                  <div className={`w-3 sm:w-4 rounded-t-md ${item.hasData ? 'bg-blue-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(5, (item.followers / maxFollowers) * 100)}%` : '5px' }}></div>
+                </div>
+                <div className="text-center mt-2">
+                  <div className="font-bold text-slate-800 text-[9px] uppercase">{item.name}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-6 mt-4 text-[10px] font-semibold text-slate-600">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-red-500"></span>Охват</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-500"></span>Подписчики</span>
           </div>
         </div>
       </div>
