@@ -1,22 +1,25 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   CheckCircle2, Clock, AlertCircle, Paperclip, 
   BarChart3, LogOut, Plus, Trash2, Edit2, Download, 
   TrendingUp, Users, Eye, Target, X, MessageCircle, Heart,
-  CheckSquare, Settings, Menu, Calendar as CalendarIcon, 
-  Layers, User, Moon, Sun, MonitorSmartphone, Link as LinkIcon,
-  FileText, ChevronDown, ChevronRight, Lock, Unlock, PlayCircle,
-  Image as Instagram, Users as Facebook, Video as Youtube, Send, Music, LayoutDashboard,
-  PanelLeftClose, PanelLeftOpen, ChevronLeft, Globe, ArrowDownToLine
+  CheckSquare, Settings, Calendar as CalendarIcon, 
+  Layers, User, Moon, Sun, MonitorSmartphone,
+  FileText, ChevronDown, ChevronRight, Lock, Unlock,
+  PlayCircle, Send, Music, LayoutDashboard,
+  PanelLeftClose, Globe, Menu
 } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+
+const APP_VERSION = 'd1-sync-new-ui-2026-06-13';
+const Instagram = Globe;
+const Facebook = Users;
+const Youtube = PlayCircle;
 
 const INITIAL_USERS = {
   admin: { id: 1, login: 'admin', role: 'admin', pass: '@Pokiza4565@', name: 'Руководитель', email: 'ceo@pokiza.com' },
   smm: { id: 2, login: 'smm', role: 'smm', pass: '@Smm4565@', name: 'SMM Специалист', email: 'smm@pokiza.com' }
 };
-
-const APP_VERSION = 'd1-sync-2026-06-13';
 
 const MONTHS = [
   { value: '2026-05', label: 'Май 2026' },
@@ -74,7 +77,8 @@ const getFormatColor = (kpi) => {
     if (found) return found;
   }
   let sum = 0;
-  for(let i=0; i<kpi.id.length; i++) sum += kpi.id.charCodeAt(i);
+  const strId = String(kpi.id); // Защита от краша (если id = число)
+  for(let i=0; i<strId.length; i++) sum += strId.charCodeAt(i);
   return FORMAT_COLORS[sum % FORMAT_COLORS.length];
 };
 
@@ -113,7 +117,7 @@ function Modal({ title, onClose, children, maxWidth = 'max-w-md' }) {
       <div className={`bg-white dark:bg-slate-900 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[90vh] mb-10 sm:mb-0 border border-slate-200 dark:border-slate-800`} onMouseDown={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
           <h3 className="font-semibold text-lg text-slate-900 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><X size={20}/></button>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors active:scale-95"><X size={20}/></button>
         </div>
         <div className="p-5 overflow-y-auto custom-scrollbar">{children}</div>
       </div>
@@ -128,8 +132,8 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
       <div className="space-y-6">
         <p className="text-slate-600 dark:text-slate-300 text-sm font-medium">{message}</p>
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Отмена</button>
-          <button onClick={() => { onConfirm(); onCancel(); }} className="px-4 py-2 text-sm font-medium rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">Подтвердить</button>
+          <button onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:scale-95">Отмена</button>
+          <button onClick={() => { onConfirm(); onCancel(); }} className="px-4 py-2 text-sm font-medium rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95 shadow-sm shadow-red-600/20">Подтвердить</button>
         </div>
       </div>
     </Modal>
@@ -175,7 +179,7 @@ function LoginScreen({ usersDb, onLogin }) {
             <input type="password" required className="w-full px-4 py-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-red-600/20 focus:border-red-600 outline-none transition-all dark:text-white" value={form.pass} onChange={e => setForm({...form, pass: e.target.value})} />
           </div>
           {error && <p className="text-red-500 text-xs font-medium text-center bg-red-50 dark:bg-red-500/10 py-2 rounded-xl">{error}</p>}
-          <button className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors mt-2 shadow-sm shadow-red-600/20">Войти</button>
+          <button className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors mt-2 shadow-sm shadow-red-600/20 active:scale-95">Войти</button>
         </form>
       </div>
     </div>
@@ -184,7 +188,6 @@ function LoginScreen({ usersDb, onLogin }) {
 
 function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const isAdmin = user?.role === 'admin';
-  console.info('Pokiza SMM version:', APP_VERSION);
   
   const [theme, setTheme] = useState('light');
   const [activeTab, setActiveTab] = useState('tasks');
@@ -201,57 +204,84 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const [printMode, setPrintMode] = useState(null);
 
   const [tasks, setTasks] = useState([]);
-  const [kpis, setKpis] = useState([]);
-  const [platforms, setPlatforms] = useState([]);
+  const [kpis, setKpis] = useState(INITIAL_KPIS);
+  const [platforms, setPlatforms] = useState(INITIAL_PLATFORMS);
   const [analytics, setAnalytics] = useState({});
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  const loadData = async (month = currentMonth, silent = false) => {
-    try {
-      if (!silent) setIsLoadingData(true);
-
-      const [platformsRes, kpisRes, tasksRes, analyticsRes] = await Promise.all([
-        fetch(`/api/platforms?ts=${Date.now()}`, { cache: 'no-store' }),
-        fetch(`/api/kpis?ts=${Date.now()}`, { cache: 'no-store' }),
-        fetch(`/api/tasks?month=${month}&ts=${Date.now()}`, { cache: 'no-store' }),
-        fetch(`/api/analytics?ts=${Date.now()}`, { cache: 'no-store' }),
-      ]);
-
-      if (!platformsRes.ok || !kpisRes.ok || !tasksRes.ok || !analyticsRes.ok) {
-        throw new Error('API вернул ошибку');
-      }
-
-      setPlatforms(await platformsRes.json());
-      setKpis(await kpisRes.json());
-      setTasks(await tasksRes.json());
-      setAnalytics(await analyticsRes.json());
-    } catch (error) {
-      console.error(error);
-      showToast('Не удалось загрузить данные из базы', 'error');
-    } finally {
-      if (!silent) setIsLoadingData(false);
-    }
-  };
+  useEffect(() => {
+    console.info('Pokiza SMM version:', APP_VERSION);
+  }, []);
 
   useEffect(() => {
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [theme]);
 
+  const showToast = useCallback((msg, type = 'success') => setToast({ message: msg, type }), []);
+  const confirmAction = useCallback((message, action) => setConfirmDialog({ isOpen: true, message, onConfirm: action }), []);
+
+  const apiRequest = useCallback(async (path, options = {}) => {
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        ...(options.headers || {})
+      }
+    });
+
+    const text = await response.text();
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
+    if (!response.ok) {
+      const message = data?.error || `Ошибка API ${response.status}`;
+      throw new Error(message);
+    }
+
+    return data;
+  }, []);
+
+  const loadData = useCallback(async (month = currentMonth, silent = false) => {
+    try {
+      if (!silent) setIsLoadingData(true);
+
+      const [platformsData, kpisData, tasksData, analyticsData] = await Promise.all([
+        apiRequest('/api/platforms'),
+        apiRequest('/api/kpis'),
+        apiRequest(`/api/tasks?month=${encodeURIComponent(month)}`),
+        apiRequest('/api/analytics')
+      ]);
+
+      setPlatforms(Array.isArray(platformsData) ? platformsData : []);
+      setKpis(Array.isArray(kpisData) ? kpisData : []);
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+      setAnalytics(analyticsData && typeof analyticsData === 'object' ? analyticsData : {});
+      return true;
+    } catch (error) {
+      console.error('Ошибка загрузки данных из D1:', error);
+      if (!silent) showToast(error.message || 'Не удалось загрузить данные из базы', 'error');
+      return false;
+    } finally {
+      if (!silent) setIsLoadingData(false);
+    }
+  }, [apiRequest, currentMonth, showToast]);
+
   useEffect(() => {
     loadData(currentMonth);
 
-    // Простая синхронизация между админом и SMM:
-    // каждые 10 секунд интерфейс подтягивает свежие данные из D1.
-    const syncTimer = setInterval(() => {
-      loadData(currentMonth, true);
+    const timer = setInterval(() => {
+      if (!document.hidden) loadData(currentMonth, true);
     }, 10000);
 
-    return () => clearInterval(syncTimer);
-  }, [currentMonth]);
-
-  const showToast = (msg, type = 'success') => setToast({ message: msg, type });
-  const confirmAction = (message, action) => setConfirmDialog({ isOpen: true, message, onConfirm: action });
+    return () => clearInterval(timer);
+  }, [currentMonth, loadData]);
 
   const monthTasks = useMemo(() => tasks.filter(t => t.month === currentMonth), [tasks, currentMonth]);
   
@@ -278,70 +308,80 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     return null;
   }, [analytics, currentMonth]);
 
-  const handleDownloadPDF = (mode) => {
-    showToast('Генерация отчета, подождите...', 'success');
+  const handleDownloadPDF = useCallback(async (mode) => {
+    showToast('Подготовка отчета, подождите...', 'success');
     setPrintMode(mode);
     
-    setTimeout(() => {
-      const element = document.getElementById('pdf-content-wrapper');
-      
-      const generate = () => {
-        const opt = {
-          margin:       [10, 10, 10, 10],
-          filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
-          image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: mode === 'plan' ? 'landscape' : 'portrait' }
-        };
-        
-        window.html2pdf().set(opt).from(element).save().then(() => {
-           setPrintMode(null);
-           showToast('Файл успешно скачан', 'success');
-        });
+    // Асинхронная задержка для гарантированного рендера DOM узла React'ом
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const element = document.getElementById('pdf-content-wrapper');
+    if(!element) {
+        showToast('Ошибка: Не удалось сгенерировать PDF', 'error');
+        setPrintMode(null);
+        return;
+    }
+
+    const generate = () => {
+      const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: mode === 'plan' ? 'landscape' : 'portrait' }
       };
+      
+      window.html2pdf().set(opt).from(element).save().then(() => {
+         setPrintMode(null);
+         showToast('Файл успешно скачан', 'success');
+      });
+    };
 
-      if (window.html2pdf) {
-        generate();
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        script.onload = generate;
-        document.body.appendChild(script);
-      }
-    }, 500); 
-  };
+    if (window.html2pdf) {
+      generate();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = generate;
+      document.body.appendChild(script);
+    }
+  }, [currentMonth, showToast]);
 
-  const checkKpiLimits = (kpiIdsToCheck, currentTaskId = null) => {
+  const checkKpiLimits = useCallback((kpiIdsToCheck, currentTaskId = null) => {
     for (let kpiId of (kpiIdsToCheck || [])) {
        const kpi = kpis.find(k => k.id === kpiId);
        if (!kpi) continue;
-       const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && t.id !== currentTaskId).length;
+       const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && String(t.id) !== String(currentTaskId)).length;
        if (currentCount >= kpi.target) {
           showToast(`Лимит формата "${kpi.title}" исчерпан (${kpi.target} макс)`, 'error');
           return false;
        }
     }
     return true;
-  };
+  }, [kpis, monthTasks, showToast]);
 
-  const saveTask = async (taskData) => {
+  const saveTask = useCallback(async (taskData) => {
     if (!checkKpiLimits(taskData.kpiIds, taskData.id)) return false;
 
-    const payload = {
-      ...taskData,
-      id: taskData.id || undefined,
-      month: taskData.month || currentMonth,
-      status: taskData.link ? 'completed' : taskData.status || 'pending',
-    };
-
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const id = taskData.id ? String(taskData.id) : `task_${Date.now()}`;
+      const month = taskData.month || currentMonth || taskData.date?.slice(0, 7);
+      const status = taskData.link ? 'completed' : taskData.status || 'pending';
 
-      if (!res.ok) throw new Error(await res.text());
+      await apiRequest('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          id,
+          month,
+          title: taskData.title,
+          text: taskData.text || '',
+          platformId: taskData.platformId || platforms[0]?.id || null,
+          status,
+          date: taskData.date,
+          link: taskData.link || '',
+          kpiIds: taskData.kpiIds || []
+        })
+      });
 
       await loadData(currentMonth, true);
       showToast(taskData.id ? 'Задача обновлена' : 'Успешно сохранено');
@@ -349,137 +389,139 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       setEditingItem(null);
       return true;
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка сохранения задачи в базе', 'error');
+      console.error('Ошибка сохранения задачи:', error);
+      showToast(error.message || 'Не удалось сохранить задачу', 'error');
       return false;
     }
-  };
+  }, [apiRequest, checkKpiLimits, currentMonth, loadData, platforms, showToast]);
 
-  const completeTask = async (taskId, link) => {
+  const completeTask = useCallback(async (taskId, link) => {
     if (!link.trim()) return showToast('Укажите ссылку', 'error');
 
-    const task = tasks.find(t => t.id === taskId);
+    try {
+      new URL(link);
+    } catch (e) {
+      return showToast('Введите корректную ссылку (начиная с http:// или https://)', 'error');
+    }
+
+    const task = tasks.find(t => String(t.id) === String(taskId));
     if (!task) return showToast('Задача не найдена', 'error');
 
+    const ok = await saveTask({ ...task, status: 'completed', link });
+    if (ok) showToast('Успешно сдано');
+  }, [saveTask, showToast, tasks]);
+
+  const deleteTask = useCallback((id) => confirmAction('Точно удалить эту задачу?', async () => {
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...task, status: 'completed', link }),
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-
-      await loadData(currentMonth, true);
-      showToast('Успешно сдано');
-    } catch (error) {
-      console.error(error);
-      showToast('Ошибка сдачи задачи', 'error');
-    }
-  };
-
-  const deleteTask = (id) => confirmAction('Точно удалить эту задачу?', async () => {
-    try {
-      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(await res.text());
-
+      await apiRequest(`/api/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' });
       await loadData(currentMonth, true);
       showToast('Удалено');
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка удаления задачи', 'error');
+      console.error('Ошибка удаления задачи:', error);
+      showToast(error.message || 'Не удалось удалить задачу', 'error');
     }
-  });
+  }), [apiRequest, confirmAction, currentMonth, loadData, showToast]);
 
-  const saveKpi = async (kpiData) => {
+  const saveKpi = useCallback(async (kpiData) => {
     try {
-      const res = await fetch('/api/kpis', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(kpiData),
-      });
+      const id = kpiData.id ? String(kpiData.id) : `kpi_${Date.now()}`;
 
-      if (!res.ok) throw new Error(await res.text());
+      await apiRequest('/api/kpis', {
+        method: 'POST',
+        body: JSON.stringify({
+          id,
+          platformId: kpiData.platformId,
+          title: kpiData.title,
+          target: Number(kpiData.target || 1),
+          colorId: kpiData.colorId || 'blue'
+        })
+      });
 
       await loadData(currentMonth, true);
       showToast('Формат сохранен');
       setActiveModal(null);
       setEditingItem(null);
+      return true;
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка сохранения KPI', 'error');
+      console.error('Ошибка сохранения KPI:', error);
+      showToast(error.message || 'Не удалось сохранить формат', 'error');
+      return false;
     }
-  };
+  }, [apiRequest, currentMonth, loadData, showToast]);
 
-  const deleteKpi = (id) => confirmAction('Удалить этот формат контента?', async () => {
+  const deleteKpi = useCallback((id) => confirmAction('Удалить этот формат контента?', async () => {
     try {
-      const res = await fetch(`/api/kpis/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(await res.text());
-
+      await apiRequest(`/api/kpis/${encodeURIComponent(id)}`, { method: 'DELETE' });
       await loadData(currentMonth, true);
       showToast('Удалено');
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка удаления KPI', 'error');
+      console.error('Ошибка удаления KPI:', error);
+      showToast(error.message || 'Не удалось удалить формат', 'error');
     }
-  });
+  }), [apiRequest, confirmAction, currentMonth, loadData, showToast]);
 
-  const savePlatform = async (platData) => {
+  const savePlatform = useCallback(async (platData) => {
     try {
-      const res = await fetch('/api/platforms', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(platData),
-      });
+      const id = platData.id ? String(platData.id) : `p_${Date.now()}`;
 
-      if (!res.ok) throw new Error(await res.text());
+      await apiRequest('/api/platforms', {
+        method: 'POST',
+        body: JSON.stringify({
+          id,
+          name: platData.name,
+          account: platData.account || '',
+          iconName: platData.iconName || 'globe'
+        })
+      });
 
       await loadData(currentMonth, true);
       showToast('Платформа сохранена');
       setActiveModal(null);
       setEditingItem(null);
+      return true;
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка сохранения платформы', 'error');
+      console.error('Ошибка сохранения платформы:', error);
+      showToast(error.message || 'Не удалось сохранить платформу', 'error');
+      return false;
     }
-  };
+  }, [apiRequest, currentMonth, loadData, showToast]);
 
-  const deletePlatform = (id) => confirmAction('Удалить платформу и все её форматы?', async () => {
+  const deletePlatform = useCallback((id) => confirmAction('Удалить платформу и все её форматы?', async () => {
     try {
-      const res = await fetch(`/api/platforms/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(await res.text());
-
+      await apiRequest(`/api/platforms/${encodeURIComponent(id)}`, { method: 'DELETE' });
       await loadData(currentMonth, true);
       showToast('Платформа удалена');
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка удаления платформы', 'error');
+      console.error('Ошибка удаления платформы:', error);
+      showToast(error.message || 'Не удалось удалить платформу', 'error');
     }
-  });
+  }), [apiRequest, confirmAction, currentMonth, loadData, showToast]);
 
-  const saveAnalytics = async (data, isSubmitted = true) => {
+  const saveAnalytics = useCallback(async (data) => {
     try {
-      const payload = {
-        ...data,
-        month: currentMonth,
-        isSubmitted,
-      };
-
-      const res = await fetch('/api/analytics', {
+      await apiRequest('/api/analytics', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          month: currentMonth,
+          followers: Number(data.followers || 0),
+          reach: Number(data.reach || 0),
+          likes: Number(data.likes || 0),
+          comments: Number(data.comments || 0),
+          er: Number(data.er || 0),
+          text: data.text || '',
+          isSubmitted: data.isSubmitted ?? true
+        })
       });
 
-      if (!res.ok) throw new Error(await res.text());
-
       await loadData(currentMonth, true);
-      showToast(isSubmitted ? 'Отчет успешно сохранен' : 'Отчет открыт для редактирования');
+      showToast(data.isSubmitted === false ? 'Отчет открыт для редактирования' : 'Отчет успешно сохранен');
+      return true;
     } catch (error) {
-      console.error(error);
-      showToast('Ошибка сохранения аналитики', 'error');
+      console.error('Ошибка сохранения аналитики:', error);
+      showToast(error.message || 'Не удалось сохранить аналитику', 'error');
+      return false;
     }
-  };
+  }, [apiRequest, currentMonth, loadData, showToast]);
 
   const NAV_ITEMS = [
     { id: 'tasks', label: 'Сводка и Задачи', icon: LayoutDashboard, roles: ['admin', 'smm'] },
@@ -501,66 +543,60 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
   return (
     <>
-    <div className={`h-screen overflow-hidden font-sans flex text-sm transition-colors duration-300 ${printMode ? 'hidden' : ''} ${theme==='dark'?'bg-[#0A0A0A] text-slate-200':'bg-[#FAFAFA] text-slate-800'}`}>
+    <div className={`h-screen overflow-hidden font-sans flex text-sm transition-colors duration-300 ${printMode ? 'opacity-0 pointer-events-none absolute' : ''} ${theme==='dark'?'bg-[#0A0A0A] text-slate-200':'bg-[#FAFAFA] text-slate-800'}`}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog({isOpen: false})} />
 
       {/* Desktop Sidebar */}
-      <aside 
-        className={`hidden md:flex flex-col border-r transition-all duration-300 ease-in-out z-40 h-full shrink-0 relative ${isSidebarExpanded ? 'w-64' : 'w-20'} ${theme==='dark'?'bg-[#111] border-slate-800':'bg-white border-slate-200'}`}
-      >
-        <div className={`h-16 flex items-center border-b shrink-0 transition-all ${isSidebarExpanded ? 'justify-between px-6' : 'justify-center'} ${theme==='dark'?'border-slate-800':'border-slate-100'}`}>
-          {isSidebarExpanded ? (
-            <h1 className="text-lg font-bold tracking-tight text-red-600 flex items-center gap-2"><TrendingUp size={20} strokeWidth={2.5} /> ПОКИЗА</h1>
-          ) : (
-             <TrendingUp size={24} className="text-red-600" strokeWidth={2.5} />
-          )}
-          {isSidebarExpanded && (
-            <button onClick={() => setIsSidebarExpanded(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-              <PanelLeftClose size={18}/>
-            </button>
-          )}
-        </div>
-        
-        {!isSidebarExpanded && (
-           <button onClick={() => setIsSidebarExpanded(true)} className="absolute top-4 -right-3 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-sm z-50">
-             <ChevronRight size={14} strokeWidth={3} />
-           </button>
-        )}
-        
-        <div className="p-4 space-y-1.5 flex-1 overflow-y-auto custom-scrollbar">
-          {isSidebarExpanded && <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3 mt-2 px-3">Меню</div>}
-          {NAV_ITEMS.filter(item => item.roles.includes(user.role)).map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} title={!isSidebarExpanded ? item.label : ''}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${!isSidebarExpanded ? 'justify-center' : ''} ${activeTab === item.id ? (theme==='dark'?'bg-red-500/10 text-red-400':'bg-red-50 text-red-600') : (theme==='dark'?'text-slate-400 hover:bg-slate-800 hover:text-white':'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}`}>
-              <item.icon size={20} strokeWidth={activeTab === item.id ? 2.5 : 2} className="shrink-0" /> {isSidebarExpanded && <span className="truncate">{item.label}</span>}
-            </button>
-          ))}
-        </div>
+      <div className="hidden md:flex relative z-40 h-full">
+         <div className={`absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity duration-300 ${isSidebarExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsSidebarExpanded(false)}></div>
+         <aside 
+           className={`flex flex-col border-r transition-all duration-300 ease-in-out h-full shrink-0 relative bg-white dark:bg-[#111] border-slate-200 dark:border-slate-800 ${isSidebarExpanded ? 'w-64 shadow-2xl absolute left-0 top-0' : 'w-20'}`}
+         >
+           <div className={`h-16 flex items-center border-b shrink-0 transition-all ${isSidebarExpanded ? 'justify-between px-6' : 'justify-center'} ${theme==='dark'?'border-slate-800':'border-slate-100'}`}>
+             {isSidebarExpanded ? (
+               <>
+                 <h1 className="text-lg font-bold tracking-tight text-red-600 flex items-center gap-2"><TrendingUp size={20} strokeWidth={2.5} /> ПОКИЗА</h1>
+                 <button onClick={() => setIsSidebarExpanded(false)} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><PanelLeftClose size={18}/></button>
+               </>
+             ) : (
+                <button onClick={() => setIsSidebarExpanded(true)} className="p-2 text-slate-500 hover:text-red-600 transition-colors rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800" title="Открыть меню">
+                  <Menu size={24} strokeWidth={2.5} />
+                </button>
+             )}
+           </div>
+           
+           <div className="p-4 space-y-1.5 flex-1 overflow-y-auto custom-scrollbar">
+             {isSidebarExpanded && <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3 mt-2 px-3">Меню</div>}
+             {NAV_ITEMS.filter(item => item.roles.includes(user.role)).map(item => (
+               <button key={item.id} onClick={() => { setActiveTab(item.id); setIsSidebarExpanded(false); }} title={!isSidebarExpanded ? item.label : ''}
+                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${!isSidebarExpanded ? 'justify-center' : ''} ${activeTab === item.id ? (theme==='dark'?'bg-red-500/10 text-red-400':'bg-red-50 text-red-600') : (theme==='dark'?'text-slate-400 hover:bg-slate-800 hover:text-white':'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}`}>
+                 <item.icon size={20} strokeWidth={activeTab === item.id ? 2.5 : 2} className="shrink-0" /> {isSidebarExpanded && <span className="truncate">{item.label}</span>}
+               </button>
+             ))}
+           </div>
 
-        <div className={`p-4 border-t shrink-0 flex flex-col gap-4 ${theme==='dark'?'border-slate-800':'border-slate-100'}`}>
-          <div className={`flex items-center gap-3 transition-all ${!isSidebarExpanded ? 'justify-center px-0' : 'px-2'}`}>
-            <div onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className={`w-10 h-10 rounded-full shadow-sm border flex items-center justify-center font-bold text-sm uppercase shrink-0 cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400':'bg-white border-slate-200 text-red-600'}`}>
-              {user.name[0]}
-            </div>
-            {isSidebarExpanded && (
-              <>
-                <div className="flex-1 overflow-hidden cursor-pointer group" onClick={() => {setEditingItem(user); setActiveModal('editProfile');}}>
-                  <div className="text-sm font-semibold leading-tight truncate group-hover:text-red-500 transition-colors">{user.name}</div>
-                  <div className="text-[11px] font-medium text-slate-500 capitalize mt-0.5">{user.role === 'admin' ? 'Администратор' : 'SMM'}</div>
-                </div>
-                <button onClick={onLogout} className="text-slate-400 hover:text-red-500 transition-colors p-2 bg-slate-50 dark:bg-slate-800 rounded-xl" title="Выйти"><LogOut size={16} /></button>
-              </>
-            )}
-          </div>
-        </div>
-      </aside>
+           <div className={`p-4 border-t shrink-0 flex flex-col gap-4 ${theme==='dark'?'border-slate-800':'border-slate-100'}`}>
+             <div className={`flex items-center gap-3 transition-all ${!isSidebarExpanded ? 'justify-center px-0' : 'px-2'}`}>
+               <div onClick={() => {setEditingItem(user); setActiveModal('editProfile'); setIsSidebarExpanded(false);}} className={`w-10 h-10 rounded-full shadow-sm border flex items-center justify-center font-semibold text-sm uppercase shrink-0 cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400 hover:bg-slate-700':'bg-white border-slate-200 text-red-600 hover:bg-slate-50'}`}>
+                 {user.name[0]}
+               </div>
+               {isSidebarExpanded && (
+                 <>
+                   <div className="flex-1 overflow-hidden cursor-pointer group" onClick={() => {setEditingItem(user); setActiveModal('editProfile'); setIsSidebarExpanded(false);}}>
+                     <div className="text-sm font-semibold leading-tight truncate group-hover:text-red-500 transition-colors">{user.name}</div>
+                     <div className="text-[11px] font-medium text-slate-500 capitalize mt-0.5">{user.role === 'admin' ? 'Администратор' : 'SMM'}</div>
+                   </div>
+                   <button onClick={onLogout} className="text-slate-400 hover:text-red-500 transition-colors p-2 bg-slate-50 dark:bg-slate-800 rounded-xl active:scale-95" title="Выйти"><LogOut size={16} /></button>
+                 </>
+               )}
+             </div>
+           </div>
+         </aside>
+      </div>
 
       {/* Main Content Area */}
-      <div 
-        onClick={() => { if(isSidebarExpanded && window.innerWidth < 1024) setIsSidebarExpanded(false); }}
-        className="flex-1 flex flex-col h-screen overflow-hidden relative transition-all duration-300 min-w-0"
-      >
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative transition-all duration-300 min-w-0 md:ml-0">
         
         {/* Mobile Top Header */}
         <header className={`md:hidden h-14 flex items-center justify-between px-5 shrink-0 border-b z-30 ${theme==='dark'?'bg-[#111] border-slate-800':'bg-white border-slate-100'}`}>
@@ -569,7 +605,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
              <span className="font-bold tracking-tight text-lg text-slate-900 dark:text-white">ПОКИЗА</span>
            </div>
            <div className="flex items-center gap-4">
-             <button onClick={()=>setTheme(theme==='light'?'dark':'light')} className="text-slate-400 hover:text-slate-900 dark:hover:text-white">
+             <button onClick={()=>setTheme(theme==='light'?'dark':'light')} className="text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95">
                {theme === 'light' ? <Moon size={20}/> : <Sun size={20}/>}
              </button>
              <div onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs uppercase cursor-pointer ${theme==='dark'?'bg-slate-800 border-slate-700 text-red-400':'bg-slate-50 border-slate-200 text-red-600'}`}>
@@ -595,7 +631,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-8 relative scroll-smooth custom-scrollbar pb-32 md:pb-8">
-          <div className="max-w-6xl mx-auto space-y-6 h-full">
+          <div className="max-w-6xl mx-auto space-y-6 h-full pb-24 md:pb-0">
             
             {/* Mobile Context Header */}
             <div className="md:hidden flex items-center justify-between mb-2">
@@ -611,11 +647,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
             {activeTab === 'tasks' && (
               <div className="animate-in fade-in space-y-8">
                 <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                  <button onClick={() => setSelectedDashboardPlatform('all')} className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${selectedDashboardPlatform === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300')}`}>
+                  <button onClick={() => setSelectedDashboardPlatform('all')} className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all active:scale-95 ${selectedDashboardPlatform === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:shadow-sm')}`}>
                     Сводка: Все
                   </button>
                   {platforms.map(p => (
-                     <button key={p.id} onClick={() => setSelectedDashboardPlatform(p.id)} className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${selectedDashboardPlatform === p.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300')}`}>
+                     <button key={p.id} onClick={() => setSelectedDashboardPlatform(p.id)} className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 active:scale-95 ${selectedDashboardPlatform === p.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : (theme==='dark'?'bg-slate-800 text-slate-400 hover:text-white':'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:shadow-sm')}`}>
                       {getPlatformIcon(p, 16)} {p.name}
                     </button>
                   ))}
@@ -625,7 +661,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Target size={20} className="text-red-500"/> Выполнение плана</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {kpiProgress.map((kpi) => (
-                      <div key={kpi.id} onClick={() => setSelectedKpiForDetails(kpi)} className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between min-h-[140px] group ${theme==='dark'?'bg-slate-900/50 border-slate-800 hover:border-slate-600':'bg-white border-slate-100 hover:border-slate-300 hover:shadow-md shadow-sm'}`}>
+                      <div key={kpi.id} onClick={() => setSelectedKpiForDetails(kpi)} className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between min-h-[140px] group active:scale-95 ${theme==='dark'?'bg-slate-900/50 border-slate-800 hover:border-slate-600':'bg-white border-slate-100 hover:border-slate-300 hover:shadow-md shadow-sm'}`}>
                         <div>
                            <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider mb-2 flex items-center gap-1.5 line-clamp-1">{getPlatformIcon({name: kpi.platformName, iconName: kpi.platformIconName}, 12)} {kpi.platformName}</div>
                            <h3 className="text-sm font-semibold leading-tight text-slate-800 dark:text-slate-100 break-words line-clamp-2">{kpi.title}</h3>
@@ -674,7 +710,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               </div>
             )}
 
-            {}
             {activeTab === 'content-plan' && (
               <div className="animate-in fade-in space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2">
@@ -682,7 +717,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                     <h2 className="text-lg font-semibold flex items-center gap-2"><FileText size={20} className="text-orange-500"/> Контент-план</h2>
                     <p className="text-xs text-slate-500 mt-1 font-medium">Таблица планирования идей и форматов</p>
                   </div>
-                  <button onClick={() => handleDownloadPDF('plan')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  <button onClick={() => handleDownloadPDF('plan')} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
                     <Download size={16}/> Скачать PDF
                   </button>
                 </div>
@@ -703,7 +738,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                         onSave={saveTask} 
                       />
                       
-                      {[...monthTasks].sort((a,b) => new Date(a.date) - new Date(b.date)).map(task => {
+                      {monthTasks.sort((a,b) => new Date(a.date) - new Date(b.date)).map(task => {
                            const platform = platforms.find(p => p.id === task.platformId);
                            const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
                            const isOverdue = task.status !== 'completed' && task.date < todayStr;
@@ -738,8 +773,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                                       <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20 whitespace-nowrap"><Clock size={12}/> В плане</span>
                                     )}
                                     <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-1.5 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 rounded-lg transition-colors"><Edit2 size={14}/></button>
-                                      <button onClick={()=> deleteTask(task.id)} className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 rounded-lg transition-colors"><Trash2 size={14}/></button>
+                                      <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-1.5 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 rounded-lg transition-colors active:scale-95"><Edit2 size={14}/></button>
+                                      <button onClick={()=> deleteTask(task.id)} className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 rounded-lg transition-colors active:scale-95"><Trash2 size={14}/></button>
                                     </div>
                                   </div>
                                 </td>
@@ -752,7 +787,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               </div>
             )}
 
-            {}
             {activeTab === 'calendar' && (
               <CalendarView 
                 currentMonth={currentMonth} tasks={monthTasks} theme={theme} kpis={kpis}
@@ -763,7 +797,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               />
             )}
 
-            {}
             {activeTab === 'analytics' && (
               <div className="space-y-6 animate-in fade-in">
                 <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
@@ -775,7 +808,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                     {currentAnalytics.isSubmitted ? (
                       <div className="flex flex-col sm:items-end gap-2">
                         <span className="px-3 py-1.5 bg-green-500/10 text-green-600 text-[11px] font-semibold uppercase tracking-wider rounded-xl border border-green-500/20 flex items-center gap-1.5 w-fit"><Lock size={14}/> Отчет сдан</span>
-                        {isAdmin && <button onClick={()=>saveAnalytics(currentAnalytics, false)} className="text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1.5 transition-colors"><Unlock size={12}/> Открыть для ред.</button>}
+                        {isAdmin && <button onClick={() => saveAnalytics({ ...currentAnalytics, isSubmitted: false })} className="text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1.5 transition-colors active:scale-95"><Unlock size={12}/> Открыть для ред.</button>}
                       </div>
                     ) : (
                       <span className="px-3 py-1.5 bg-amber-500/10 text-amber-600 text-[11px] font-semibold uppercase tracking-wider rounded-xl border border-amber-500/20 w-fit">Ожидает сдачи</span>
@@ -783,7 +816,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   </div>
 
                   {!currentAnalytics.isSubmitted ? (
-                    <AnalyticsInputForm theme={theme} currentData={currentAnalytics} onSave={(data) => saveAnalytics(data, true)} showToast={showToast} />
+                    <AnalyticsInputForm theme={theme} currentData={currentAnalytics} onSave={(data) => saveAnalytics({ ...data, isSubmitted: true })} />
                   ) : (
                     <AnalyticsDashboard data={currentAnalytics} prevData={prevAnalytics} theme={theme} allData={analytics} months={MONTHS} onPrint={()=>handleDownloadPDF('analytics')} />
                   )}
@@ -791,7 +824,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               </div>
             )}
 
-            {}
             {isAdmin && activeTab === 'platforms' && (
               <div className="space-y-6 animate-in fade-in">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-2">
@@ -808,7 +840,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                    {platforms.map(p => {
                      const isExpanded = expandedPlatforms[p.id] !== false; 
                      return (
-                       <div key={p.id} className={`rounded-3xl border transition-all overflow-hidden ${theme==='dark'?'bg-slate-900/80 border-slate-800':'bg-white border-slate-100 shadow-sm'}`}>
+                       <div key={p.id} className={`rounded-3xl border transition-all overflow-hidden ${theme==='dark'?'bg-slate-900/80 border-slate-800':'bg-white border-slate-100 hover:shadow-md shadow-sm'}`}>
                           <div className="flex justify-between items-center p-6 cursor-pointer select-none" onClick={() => setExpandedPlatforms(prev => ({ ...prev, [p.id]: !prev[p.id] }))}>
                             <div className="flex items-center gap-4">
                               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${theme==='dark'?'bg-slate-800 text-white':'bg-slate-50 border border-slate-100 text-slate-800'}`}>
@@ -820,8 +852,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                               <button onClick={(e) => { e.stopPropagation(); setEditingItem(p); setActiveModal('editPlatform'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors"><Edit2 size={16}/></button>
-                               <button onClick={(e) => { e.stopPropagation(); deletePlatform(p.id); }} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                               <button onClick={(e) => { e.stopPropagation(); setEditingItem(p); setActiveModal('editPlatform'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
+                               <button onClick={(e) => { e.stopPropagation(); deletePlatform(p.id); }} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
                                <div className={`p-1.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}><ChevronDown size={20} className="text-slate-400"/></div>
                             </div>
                           </div>
@@ -830,21 +862,21 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                             <div className={`p-6 pt-0 border-t ${theme==='dark'?'border-slate-800 bg-slate-900':'border-slate-50/50 bg-white'}`}>
                                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-4 mt-4 flex justify-between items-center">
                                  Форматы контента
-                                 <button onClick={(e) => { e.stopPropagation(); setEditingItem({platformId: p.id}); setActiveModal('editKpi'); }} className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"><Plus size={14}/> Добавить</button>
+                                 <button onClick={(e) => { e.stopPropagation(); setEditingItem({platformId: p.id}); setActiveModal('editKpi'); }} className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium active:scale-95"><Plus size={14}/> Добавить</button>
                                </div>
                                <div className="space-y-2.5">
                                  {kpis.filter(k=>k.platformId === p.id).map(kpi => {
                                     const colorClass = getFormatColor(kpi);
                                     return (
-                                     <div key={kpi.id} className={`flex justify-between items-center p-3.5 rounded-2xl border transition-colors ${theme==='dark'?'bg-slate-800/50 border-slate-700':'bg-white border-slate-100 shadow-sm'}`}>
+                                     <div key={kpi.id} className={`flex justify-between items-center p-3.5 rounded-2xl border transition-all hover:shadow-sm ${theme==='dark'?'bg-slate-800/50 border-slate-700':'bg-white border-slate-100 shadow-sm'}`}>
                                        <div className="flex items-center gap-3">
                                           <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${colorClass.bg}`}></div>
                                           <span className="font-medium text-sm text-slate-800 dark:text-slate-200">{kpi.title}</span>
                                        </div>
                                        <div className="flex items-center gap-2.5 shrink-0">
                                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${theme==='dark'?'bg-slate-900 text-slate-300':'bg-slate-100 text-slate-600'}`}>{kpi.target} шт/мес</span>
-                                         <button onClick={(e) => { e.stopPropagation(); setEditingItem(kpi); setActiveModal('editKpi'); }} className="text-slate-400 hover:text-blue-500 transition-colors p-1"><Edit2 size={14}/></button>
-                                         <button onClick={(e) => { e.stopPropagation(); deleteKpi(kpi.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={14}/></button>
+                                         <button onClick={(e) => { e.stopPropagation(); setEditingItem(kpi); setActiveModal('editKpi'); }} className="text-slate-400 hover:text-blue-500 transition-colors p-1 active:scale-95"><Edit2 size={14}/></button>
+                                         <button onClick={(e) => { e.stopPropagation(); deleteKpi(kpi.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1 active:scale-95"><Trash2 size={14}/></button>
                                        </div>
                                      </div>
                                    )
@@ -860,7 +892,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               </div>
             )}
 
-            {}
             {activeTab === 'settings' && (
               <div className="space-y-6 animate-in fade-in pb-10">
                 <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm max-w-3xl ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
@@ -872,8 +903,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                         <div className="text-xs text-slate-500">Светлый или темный режим</div>
                       </div>
                       <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1.5 rounded-xl w-fit">
-                        <button onClick={()=>setTheme('light')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all ${theme==='light'?'bg-white shadow-sm text-slate-900':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Sun size={14}/> Светлая</button>
-                        <button onClick={()=>setTheme('dark')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all ${theme==='dark'?'bg-slate-700 shadow-sm text-white':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Moon size={14}/> Темная</button>
+                        <button onClick={()=>setTheme('light')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all active:scale-95 ${theme==='light'?'bg-white shadow-sm text-slate-900':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Sun size={14}/> Светлая</button>
+                        <button onClick={()=>setTheme('dark')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold transition-all active:scale-95 ${theme==='dark'?'bg-slate-700 shadow-sm text-white':'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><Moon size={14}/> Темная</button>
                       </div>
                     </div>
                     
@@ -882,7 +913,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                         <div className="font-semibold text-sm flex items-center gap-2 mb-1"><User size={18} className="text-purple-500"/> Мой профиль</div>
                         <div className="text-xs text-slate-500">Настройка отображаемого имени</div>
                       </div>
-                      <button onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className="px-5 py-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">Изменить</button>
+                      <button onClick={() => {setEditingItem(user); setActiveModal('editProfile');}} className="px-5 py-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95">Изменить</button>
                     </div>
                   </div>
                 </section>
@@ -914,25 +945,25 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
           </div>
         </main>
         
-        {}
-        <nav className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t pb-safe backdrop-blur-xl ${theme==='dark'?'bg-[#111]/90 border-slate-800':'bg-white/95 border-slate-200'}`}>
+        {/* Mobile Bottom Navigation */}
+        <nav className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t pb-safe backdrop-blur-xl transition-transform duration-300 ${printMode ? 'translate-y-full' : 'translate-y-0'} ${theme==='dark'?'bg-[#111]/90 border-slate-800':'bg-white/95 border-slate-200'}`}>
            <div className="flex justify-around items-end h-16 px-2 pb-2">
               {MOBILE_NAV_ITEMS.slice(0,2).map(item => (
-                 <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === item.id ? (theme==='dark'?'text-red-400':'text-red-600') : 'text-slate-500'}`}>
-                    <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 2} className={activeTab === item.id ? 'fill-current opacity-20' : ''}/>
+                 <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors active:scale-95 ${activeTab === item.id ? (theme==='dark'?'text-red-400':'text-red-600') : 'text-slate-400'}`}>
+                    <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 2} />
                     <span className="text-[10px] font-medium">{item.label}</span>
                  </button>
               ))}
               
               <div className="relative -top-5 z-50">
-                 <button onClick={() => { setEditingItem({ date: todayStr, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-[#111]">
+                 <button onClick={() => { setEditingItem({ date: `${currentMonth}-01`, platformId: platforms[0]?.id, kpiIds: [] }); setActiveModal('addTask'); }} className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform active:scale-95 border-[4px] border-white dark:border-[#111]">
                     <Plus size={28} strokeWidth={2.5} />
                  </button>
               </div>
 
               {MOBILE_NAV_ITEMS.slice(2,4).map(item => (
-                 <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${activeTab === item.id ? (theme==='dark'?'text-red-400':'text-red-600') : 'text-slate-500'}`}>
-                    <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 2} className={activeTab === item.id ? 'fill-current opacity-20' : ''}/>
+                 <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors active:scale-95 ${activeTab === item.id ? (theme==='dark'?'text-red-400':'text-red-600') : 'text-slate-400'}`}>
+                    <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 2} />
                     <span className="text-[10px] font-medium">{item.label}</span>
                  </button>
               ))}
@@ -969,8 +1000,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                 ))}
                 
                 {Array.from({length: emptySlotsCount}).map((_, idx) => (
-                  <div key={`empty-${idx}`} className={`p-5 flex items-center justify-between border-l-[3px] border-l-transparent hover:border-l-red-500 transition-all cursor-pointer group ${theme==='dark'?'bg-slate-900 hover:bg-slate-800':'bg-white hover:bg-slate-50'}`}
-                       onClick={() => { setEditingItem({ title: '', kpiIds: [selectedKpiForDetails.id], platformId: selectedKpiForDetails.platformId, date: todayStr }); setActiveModal('addTask'); }}>
+                  <div key={`empty-${idx}`} className={`p-5 flex items-center justify-between border-l-[3px] border-l-transparent hover:border-l-red-500 transition-all cursor-pointer group active:scale-[0.99] ${theme==='dark'?'bg-slate-900 hover:bg-slate-800':'bg-white hover:bg-slate-50'}`}
+                       onClick={() => { setEditingItem({ title: '', kpiIds: [selectedKpiForDetails.id], platformId: selectedKpiForDetails.platformId, date: `${currentMonth}-01` }); setActiveModal('addTask'); }}>
                     <div className="flex items-center gap-4 text-slate-400">
                       <div className="w-8 h-8 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center shrink-0 group-hover:border-red-500 group-hover:text-red-500 transition-colors"><Plus size={16}/></div>
                       <span className="text-sm font-medium group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">Свободный слот (добавить задачу)</span>
@@ -994,7 +1025,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                <div className="p-10 text-center text-slate-400 font-medium text-sm">На этот день задач нет.</div>
              )}
            </div>
-           <button onClick={() => { setActiveModal('addTask'); setEditingItem({ date: editingItem._date, kpiIds: [], platformId: platforms[0]?.id }); }} className="w-full mt-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm shadow-sm">
+           <button onClick={() => { setActiveModal('addTask'); setEditingItem({ date: editingItem._date, kpiIds: [], platformId: platforms[0]?.id }); }} className="w-full mt-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95">
               <Plus size={18}/> Запланировать задачу
            </button>
         </Modal>
@@ -1015,7 +1046,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                <label className="block text-xs font-semibold mb-2">Иконка</label>
                <div className="grid grid-cols-6 gap-2">
                  {PLATFORM_ICONS.map(pi => (
-                   <label key={pi.id} className={`flex justify-center items-center p-3 border rounded-xl cursor-pointer transition-colors ${editingItem?.iconName === pi.id || (!editingItem?.iconName && pi.id === 'globe') ? 'border-red-600 bg-red-50 text-red-600 dark:bg-red-500/10' : (theme==='dark'?'border-slate-800 hover:bg-slate-800':'border-slate-200 hover:bg-slate-50')}`}>
+                   <label key={pi.id} className={`flex justify-center items-center p-3 border rounded-xl cursor-pointer transition-colors active:scale-95 ${editingItem?.iconName === pi.id || (!editingItem?.iconName && pi.id === 'globe') ? 'border-red-600 bg-red-50 text-red-600 dark:bg-red-500/10' : (theme==='dark'?'border-slate-800 hover:bg-slate-800':'border-slate-200 hover:bg-slate-50')}`}>
                      <input type="radio" name="iconName" value={pi.id} className="hidden" defaultChecked={editingItem?.iconName === pi.id} onChange={(e) => setEditingItem({...editingItem, iconName: e.target.value})} />
                      <pi.icon size={20} strokeWidth={1.5} />
                    </label>
@@ -1054,7 +1085,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
               <label className="block text-xs font-semibold mb-3 flex items-center gap-2">Цвет <span className="text-[10px] font-medium text-slate-400">(Для календаря)</span></label>
               <div className="flex flex-wrap gap-3">
                  {FORMAT_COLORS.map(c => (
-                   <label key={c.id} className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center border-2 transition-all ${editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue') ? 'border-slate-800 dark:border-white scale-110 shadow-sm' : 'border-transparent hover:scale-105'} ${c.bg}`}>
+                   <label key={c.id} className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center border-2 transition-all active:scale-95 ${editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue') ? 'border-slate-800 dark:border-white scale-110 shadow-sm' : 'border-transparent hover:scale-105'} ${c.bg}`}>
                      <input type="radio" name="colorId" value={c.id} className="hidden" defaultChecked={editingItem?.colorId === c.id} onChange={(e) => setEditingItem({...editingItem, colorId: e.target.value})} />
                      {(editingItem?.colorId === c.id || (!editingItem?.colorId && c.id === 'blue')) && <CheckCircle2 size={16} strokeWidth={2.5} className="text-white"/>}
                    </label>
@@ -1142,16 +1173,18 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
     {}
     {printMode && (
-      <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 min-h-screen max-w-5xl mx-auto">
-        {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} />}
-        {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={[...monthTasks].sort((a,b) => new Date(a.date) - new Date(b.date))} platforms={platforms} kpis={kpis} />}
+      <div className="absolute top-0 left-0 w-full z-0 overflow-hidden" style={{ height: '0', opacity: 0 }}>
+        <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 max-w-5xl mx-auto w-[1000px]">
+          {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} />}
+          {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={monthTasks.sort((a,b) => new Date(a.date) - new Date(b.date))} platforms={platforms} kpis={kpis} />}
+        </div>
       </div>
     )}
     </>
   );
 }
 
-function TaskRow({ task, theme, platforms, kpis, onComplete, onDelete, onEdit, compact = false, todayStr }) {
+const TaskRow = React.memo(function TaskRow({ task, theme, platforms, kpis, onComplete, onDelete, onEdit, compact = false, todayStr }) {
   const [linkInput, setLinkInput] = useState(task.link || '');
   const isCompleted = task.status === 'completed';
   const isOverdue = !isCompleted && task.date < todayStr;
@@ -1181,9 +1214,9 @@ function TaskRow({ task, theme, platforms, kpis, onComplete, onDelete, onEdit, c
           <div className="flex w-full gap-2">
             <input type="text" placeholder="Ссылка..." value={linkInput} onChange={e => setLinkInput(e.target.value)} className={`flex-1 md:w-56 px-3 py-2 border text-xs font-medium rounded-xl outline-none focus:border-red-600 transition-colors ${theme==='dark'?'bg-slate-900 border-slate-700':'bg-white border-slate-200'}`} />
             <div className="flex gap-1.5">
-              <button onClick={() => onComplete(task.id, linkInput)} className="px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-xs font-semibold rounded-xl hover:opacity-80 shrink-0 shadow-sm transition-opacity">Сдать</button>
-              <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors shrink-0"><Edit2 size={16}/></button>
-              <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"><Trash2 size={16}/></button>
+              <button onClick={() => onComplete(task.id, linkInput)} className="px-4 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white text-xs font-semibold rounded-xl hover:opacity-80 shrink-0 shadow-sm transition-all active:scale-95">Сдать</button>
+              <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors shrink-0 active:scale-95"><Edit2 size={16}/></button>
+              <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0 active:scale-95"><Trash2 size={16}/></button>
             </div>
           </div>
         ) : (
@@ -1194,15 +1227,15 @@ function TaskRow({ task, theme, platforms, kpis, onComplete, onDelete, onEdit, c
               <span className="text-xs font-medium text-slate-400 italic">Сдано без ссылки</span>
             )}
             <div className="flex gap-1.5 shrink-0">
-               <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-500 rounded-xl transition-colors"><Edit2 size={16}/></button>
-               <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors"><Trash2 size={16}/></button>
+               <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-500 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
+               <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
             </div>
           </div>
         )}
       </div>
     </div>
   );
-}
+});
 
 function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
   const [data, setData] = useState({ date: `${currentMonth}-01`, title: '', text: '', platformId: platforms[0]?.id || '', kpiIds: [] });
@@ -1211,7 +1244,7 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
     setData(prev => ({
       ...prev,
       date: prev.date?.startsWith(currentMonth) ? prev.date : `${currentMonth}-01`,
-      platformId: prev.platformId || platforms[0]?.id || '',
+      platformId: prev.platformId || platforms[0]?.id || ''
     }));
   }, [currentMonth, platforms]);
 
@@ -1251,7 +1284,7 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
 }
 
 function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
-  const [formData, setFormData] = useState(task || { title: '', text: '', date: '2026-06-01', platformId: platforms[0]?.id || '', kpiIds: [], link: '' });
+  const [formData, setFormData] = useState(task || { title: '', text: '', date: new Date().toISOString().split('T')[0], platformId: platforms[0]?.id || '', kpiIds: [], link: '' });
 
   const handlePlatformChange = (e) => {
     setFormData({...formData, platformId: e.target.value, kpiIds: []});
@@ -1293,7 +1326,7 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
         
         <div>
           <label className="block text-xs font-semibold mb-2 flex flex-col">
-            Форматы контента (KPI)
+            Форматы контента
             <span className="text-[10px] font-medium text-slate-400 mt-1">Выберите один или несколько форматов</span>
           </label>
           <div className={`border rounded-2xl p-3 space-y-2 max-h-48 overflow-y-auto custom-scrollbar ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-slate-50/50 border-slate-100'}`}>
@@ -1301,7 +1334,7 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
             {availableKpis.map(k => {
                const colorClass = getFormatColor(k);
                return (
-                <label key={k.id} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer group transition-colors ${formData.kpiIds?.includes(k.id) ? (theme==='dark'?'bg-slate-800':'bg-white shadow-sm border border-slate-100') : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`} onClick={() => toggleKpi(k.id)}>
+                <label key={k.id} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer group transition-colors active:scale-[0.99] ${formData.kpiIds?.includes(k.id) ? (theme==='dark'?'bg-slate-800':'bg-white shadow-sm border border-slate-100') : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`} onClick={() => toggleKpi(k.id)}>
                   <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${formData.kpiIds?.includes(k.id) ? 'bg-red-600 border-red-600' : (theme==='dark'?'border-slate-600 group-hover:border-slate-500':'border-slate-300 group-hover:border-slate-400')}`}>
                     {formData.kpiIds?.includes(k.id) && <CheckCircle2 size={12} strokeWidth={2.5} className="text-white"/>}
                   </div>
@@ -1371,7 +1404,7 @@ function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick }) {
           const hasTasks = dayTasks.length > 0;
           
           return (
-            <div key={dayNum} onClick={() => onDayClick(dateStr, dayTasks)} className={`aspect-square rounded-2xl border relative p-2 sm:p-3 cursor-pointer transition-all flex flex-col justify-between hover:shadow-md ${hasTasks ? (theme==='dark'?'bg-slate-800 border-slate-700 hover:border-slate-500':'bg-white border-slate-200 hover:border-slate-300 shadow-sm') : (theme==='dark'?'bg-slate-900/50 border-dashed border-slate-800 hover:border-slate-600':'bg-slate-50/50 border-dashed border-slate-200 hover:border-slate-300')}`}>
+            <div key={dayNum} onClick={() => onDayClick(dateStr, dayTasks)} className={`aspect-square rounded-2xl border relative p-2 sm:p-3 cursor-pointer transition-all flex flex-col justify-between hover:shadow-md active:scale-95 ${hasTasks ? (theme==='dark'?'bg-slate-800 border-slate-700 hover:border-slate-500':'bg-white border-slate-200 hover:border-slate-300 shadow-sm') : (theme==='dark'?'bg-slate-900/50 border-dashed border-slate-800 hover:border-slate-600':'bg-slate-50/50 border-dashed border-slate-200 hover:border-slate-300')}`}>
               <span className={`text-sm sm:text-base font-semibold ${hasTasks ? (theme==='dark'?'text-white':'text-slate-800') : 'text-slate-400'}`}>{dayNum}</span>
               {hasTasks && (
                 <div className="mt-auto">
@@ -1394,8 +1427,13 @@ function CalendarView({ currentMonth, tasks, theme, kpis, onDayClick }) {
   );
 }
 
-function AnalyticsInputForm({ onSave, currentData, theme, showToast }) {
+function AnalyticsInputForm({ onSave, currentData, theme }) {
   const [data, setData] = useState(currentData);
+
+  useEffect(() => {
+    setData(currentData);
+  }, [currentData]);
+
   const er = useMemo(() => {
     const r = Number(data.reach) || 0;
     if (r === 0) return 0;
@@ -1423,7 +1461,7 @@ function AnalyticsInputForm({ onSave, currentData, theme, showToast }) {
         <label className="block text-xs font-semibold mb-2">Выводы и инсайты</label>
         <textarea rows="4" placeholder="Краткое резюме проделанной работы..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-3 border rounded-xl outline-none focus:border-red-600 resize-none font-medium text-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-slate-50 border-slate-200'}`} />
       </div>
-      <button onClick={() => { if(!data.reach) return showToast('Введите охват', 'error'); onSave({...data, er}); }} className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm shadow-red-600/20 flex items-center justify-center gap-2 transition-transform active:scale-95 w-full sm:w-auto text-sm"><Lock size={16}/> Отправить отчет</button>
+      <button onClick={() => { if(!data.reach) return alert('Введите охват'); onSave({...data, er}); }} className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm shadow-red-600/20 flex items-center justify-center gap-2 transition-transform active:scale-95 w-full sm:w-auto text-sm"><Lock size={16}/> Отправить отчет</button>
     </div>
   );
 }
@@ -1472,7 +1510,7 @@ function AnalyticsDashboard({ data, prevData, theme, allData, months, onPrint })
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className={`p-6 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-white border-slate-100'}`}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500 flex justify-between">Динамика Охвата <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium"><Download size={14}/> Скачать PDF</button></h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500 flex justify-between">Динамика Охвата <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium active:scale-95"><Download size={14}/> Скачать PDF</button></h3>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
