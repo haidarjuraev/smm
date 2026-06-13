@@ -168,6 +168,213 @@ const AppLogo = ({ settings, size = 24, className = "text-red-600" }) => {
   return <TrendingUp size={size} className={className} strokeWidth={2.5} />;
 };
 
+const DarkThemeStyles = () => (
+  <style>{`
+    html.dark,
+    html.dark body {
+      color-scheme: dark;
+      background: #07111f;
+    }
+
+    .dark-ui-shell {
+      --pokiza-dark-bg: #07111f;
+      --pokiza-dark-bg-2: #0d1726;
+      --pokiza-dark-panel: rgba(18, 29, 46, 0.86);
+      --pokiza-dark-panel-strong: rgba(23, 35, 54, 0.94);
+      --pokiza-dark-panel-soft: rgba(30, 42, 62, 0.64);
+      --pokiza-dark-border: rgba(148, 163, 184, 0.18);
+      --pokiza-dark-border-strong: rgba(148, 163, 184, 0.28);
+      --pokiza-dark-text: #e6edf7;
+      --pokiza-dark-muted: #9aa8ba;
+      --pokiza-dark-red: #ff3b45;
+      background:
+        radial-gradient(circle at 14% -8%, rgba(59, 130, 246, 0.15), transparent 34%),
+        radial-gradient(circle at 92% 8%, rgba(239, 68, 68, 0.10), transparent 30%),
+        linear-gradient(135deg, var(--pokiza-dark-bg) 0%, var(--pokiza-dark-bg-2) 52%, #101827 100%) !important;
+      color: var(--pokiza-dark-text);
+    }
+
+    .dark-ui-shell header,
+    .dark-ui-shell aside,
+    .dark-ui-shell nav {
+      background: rgba(13, 23, 38, 0.84) !important;
+      border-color: rgba(148, 163, 184, 0.16) !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      backdrop-filter: blur(18px);
+    }
+
+    .dark-ui-shell main {
+      background: transparent !important;
+    }
+
+    .dark-ui-shell [class*="bg-white"],
+    .dark-ui-shell [class*="bg-slate-50"],
+    .dark-ui-shell [class*="bg-slate-100"],
+    .dark-ui-shell [class*="bg-slate-200"],
+    .dark-ui-shell [class*="dark:bg-white"],
+    .dark-ui-shell [class*="dark:bg-slate-50"],
+    .dark-ui-shell [class*="dark:bg-slate-100"],
+    .dark-ui-shell [class*="dark:bg-slate-200"] {
+      background-color: var(--pokiza-dark-panel) !important;
+    }
+
+    .dark-ui-shell [class*="bg-slate-700"],
+    .dark-ui-shell [class*="bg-slate-800"],
+    .dark-ui-shell [class*="bg-slate-900"],
+    .dark-ui-shell [class*="dark:bg-slate-700"],
+    .dark-ui-shell [class*="dark:bg-slate-800"],
+    .dark-ui-shell [class*="dark:bg-slate-900"] {
+      background-color: var(--pokiza-dark-panel-strong) !important;
+    }
+
+    .dark-ui-shell [class*="bg-red-50"],
+    .dark-ui-shell [class*="dark:bg-red-500/10"] {
+      background-color: rgba(239, 68, 68, 0.12) !important;
+    }
+
+    .dark-ui-shell [class*="bg-blue-50"],
+    .dark-ui-shell [class*="dark:bg-blue-500/10"] {
+      background-color: rgba(59, 130, 246, 0.12) !important;
+    }
+
+    .dark-ui-shell [class*="bg-green-50"],
+    .dark-ui-shell [class*="dark:bg-green-500/10"] {
+      background-color: rgba(34, 197, 94, 0.12) !important;
+    }
+
+    .dark-ui-shell [class*="bg-amber-50"],
+    .dark-ui-shell [class*="dark:bg-amber-500/10"] {
+      background-color: rgba(245, 158, 11, 0.12) !important;
+    }
+
+    .dark-ui-shell [class*="border-slate-100"],
+    .dark-ui-shell [class*="border-slate-200"],
+    .dark-ui-shell [class*="border-slate-300"],
+    .dark-ui-shell [class*="border-slate-600"],
+    .dark-ui-shell [class*="border-slate-700"],
+    .dark-ui-shell [class*="border-slate-800"],
+    .dark-ui-shell [class*="dark:border-slate-600"],
+    .dark-ui-shell [class*="dark:border-slate-700"],
+    .dark-ui-shell [class*="dark:border-slate-800"] {
+      border-color: var(--pokiza-dark-border) !important;
+    }
+
+    .dark-ui-shell [class*="rounded-3xl"][class*="border"],
+    .dark-ui-shell [class*="rounded-2xl"][class*="border"],
+    .dark-ui-shell [class*="rounded-xl"][class*="border"] {
+      box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    }
+
+    .dark-ui-shell [class*="shadow-sm"],
+    .dark-ui-shell [class*="shadow-md"],
+    .dark-ui-shell [class*="shadow-2xl"] {
+      box-shadow:
+        0 20px 48px rgba(0, 0, 0, 0.30),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+    }
+
+    .dark-ui-shell input,
+    .dark-ui-shell textarea,
+    .dark-ui-shell select {
+      background-color: rgba(9, 16, 28, 0.70) !important;
+      border-color: rgba(148, 163, 184, 0.22) !important;
+      color: var(--pokiza-dark-text) !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+    }
+
+    .dark-ui-shell input::placeholder,
+    .dark-ui-shell textarea::placeholder {
+      color: #64748b !important;
+    }
+
+    .dark-ui-shell select option {
+      background: #111c2d !important;
+      color: var(--pokiza-dark-text) !important;
+    }
+
+    .dark-ui-shell [class*="text-slate-900"],
+    .dark-ui-shell [class*="text-slate-800"],
+    .dark-ui-shell [class*="text-slate-700"],
+    .dark-ui-shell [class*="dark:text-slate-900"],
+    .dark-ui-shell [class*="dark:text-slate-800"],
+    .dark-ui-shell [class*="dark:text-slate-700"] {
+      color: var(--pokiza-dark-text) !important;
+    }
+
+    .dark-ui-shell [class*="text-slate-600"],
+    .dark-ui-shell [class*="text-slate-500"],
+    .dark-ui-shell [class*="dark:text-slate-600"],
+    .dark-ui-shell [class*="dark:text-slate-500"] {
+      color: var(--pokiza-dark-muted) !important;
+    }
+
+    .dark-ui-shell [class*="text-slate-400"],
+    .dark-ui-shell [class*="dark:text-slate-400"] {
+      color: #8b9bb0 !important;
+    }
+
+    .dark-ui-shell [class*="text-red-600"],
+    .dark-ui-shell [class*="text-red-500"],
+    .dark-ui-shell [class*="dark:text-red-400"] {
+      color: var(--pokiza-dark-red) !important;
+    }
+
+    .dark-ui-shell [class*="bg-red-600"],
+    .dark-ui-shell [class~="bg-red-500"] {
+      background-color: #ef3b42 !important;
+    }
+
+    .dark-ui-shell button[class*="bg-slate-900"],
+    .dark-ui-shell button[class*="dark:bg-white"] {
+      background: linear-gradient(180deg, rgba(30, 47, 73, 0.98), rgba(20, 32, 51, 0.98)) !important;
+      color: var(--pokiza-dark-text) !important;
+      border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    }
+
+    .dark-ui-shell button[class*="bg-red-600"],
+    .dark-ui-shell button[class*="hover:bg-red-700"] {
+      background: linear-gradient(180deg, #ff3b45, #dc2626) !important;
+      color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.10) !important;
+    }
+
+    .dark-ui-shell table thead tr {
+      background-color: rgba(30, 42, 62, 0.56) !important;
+    }
+
+    .dark-ui-shell table tbody tr:hover,
+    .dark-ui-shell [class*="hover:bg-slate-50"]:hover,
+    .dark-ui-shell [class*="dark:hover:bg-slate-700"]:hover,
+    .dark-ui-shell [class*="dark:hover:bg-slate-600"]:hover {
+      background-color: rgba(37, 52, 77, 0.72) !important;
+    }
+
+    .dark-ui-shell .recharts-cartesian-grid line {
+      stroke: rgba(148, 163, 184, 0.18) !important;
+    }
+
+    .dark-ui-shell .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .dark-ui-shell .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.32);
+    }
+
+    .dark-ui-shell .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.52);
+      border-radius: 999px;
+    }
+
+    .dark-ui-shell .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.66);
+    }
+  `}</style>
+);
+
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -260,9 +467,14 @@ export default function AppWrapper() {
   }, []);
 
   useEffect(() => {
+    const isDark = theme === 'dark';
+    document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.height = '100%';
+    document.documentElement.style.backgroundColor = isDark ? '#07111f' : '#FAFAFA';
     document.body.style.height = '100%';
-    document.body.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#FAFAFA';
+    document.body.style.background = isDark
+      ? 'radial-gradient(circle at 14% -8%, rgba(59,130,246,0.15), transparent 34%), radial-gradient(circle at 92% 8%, rgba(239,68,68,0.10), transparent 30%), linear-gradient(135deg, #07111f 0%, #0d1726 52%, #101827 100%)'
+      : '#FAFAFA';
 
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
@@ -278,7 +490,7 @@ export default function AppWrapper() {
       themeMeta.name = 'theme-color';
       document.head.appendChild(themeMeta);
     }
-    themeMeta.content = theme === 'dark' ? '#0f172a' : '#FAFAFA';
+    themeMeta.content = theme === 'dark' ? '#07111f' : '#FAFAFA';
   }, [theme]);
 
   useEffect(() => {
@@ -290,8 +502,18 @@ export default function AppWrapper() {
     else localStorage.removeItem('pokiza_user');
   }, [user]);
 
-  if (!user) return <LoginScreen usersDb={usersDb} onLogin={setUser} theme={theme} appSettings={appSettings} />;
-  return <MainApp user={user} usersDb={usersDb} setUsersDb={setUsersDb} onLogout={() => setUser(null)} onUpdateUser={setUser} theme={theme} setTheme={setTheme} appSettings={appSettings} setAppSettings={setAppSettings} reloadUsersAndSettings={loadUsersAndSettings} />;
+  if (!user) return (
+    <>
+      <DarkThemeStyles />
+      <LoginScreen usersDb={usersDb} onLogin={setUser} theme={theme} appSettings={appSettings} />
+    </>
+  );
+  return (
+    <>
+      <DarkThemeStyles />
+      <MainApp user={user} usersDb={usersDb} setUsersDb={setUsersDb} onLogout={() => setUser(null)} onUpdateUser={setUser} theme={theme} setTheme={setTheme} appSettings={appSettings} setAppSettings={setAppSettings} reloadUsersAndSettings={loadUsersAndSettings} />
+    </>
+  );
 }
 
 function LoginScreen({ usersDb, onLogin, theme, appSettings }) {
@@ -306,7 +528,7 @@ function LoginScreen({ usersDb, onLogin, theme, appSettings }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-300">
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-300 ${theme==='dark' ? 'dark-ui-shell' : ''}`}>
       <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm w-full max-w-sm border border-slate-100 dark:border-slate-700 transition-colors duration-300">
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="w-14 h-14 bg-red-50 dark:bg-red-500/10 rounded-2xl mx-auto flex items-center justify-center mb-4 overflow-hidden transition-colors">
@@ -826,7 +1048,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
   return (
     <>
-    <div className={`h-screen w-full overflow-hidden font-sans flex text-sm transition-colors duration-300 ${printMode ? 'opacity-0 pointer-events-none absolute' : ''} ${theme==='dark'?'bg-slate-900 text-slate-200':'bg-slate-50 text-slate-800'}`}>
+    <div className={`h-screen w-full overflow-hidden font-sans flex text-sm transition-colors duration-300 ${printMode ? 'opacity-0 pointer-events-none absolute' : ''} ${theme==='dark'?'dark-ui-shell bg-slate-900 text-slate-200':'bg-slate-50 text-slate-800'}`}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog({isOpen: false})} />
 
