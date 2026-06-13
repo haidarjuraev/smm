@@ -390,39 +390,24 @@ function Toast({ message, type, onClose }) {
 }
 
 function Modal({ title, onClose, children, maxWidth = 'max-w-md' }) {
-  const handleBackdropMouseDown = (e) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
-  const stopScrollBubble = (e) => {
-    e.stopPropagation();
-  };
-
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-200"
-      onMouseDown={handleBackdropMouseDown}
-      onWheel={stopScrollBubble}
-      onTouchMove={stopScrollBubble}
-      style={{ overscrollBehavior: 'contain' }}
+      className="fixed inset-0 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-200 overscroll-none"
+      onMouseDown={onClose}
+      onWheel={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}
+      onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}
     >
       <div
-        className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-700 transition-colors`}
+        className={`bg-white dark:bg-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-700 transition-colors overscroll-contain`}
         onMouseDown={e => e.stopPropagation()}
-        onWheel={stopScrollBubble}
-        onTouchMove={stopScrollBubble}
-        style={{ overscrollBehavior: 'contain' }}
+        onWheel={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
       >
         <div className="px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center shrink-0 transition-colors">
           <h3 className="font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate pr-3">{title}</h3>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95 shrink-0"><X size={20}/></button>
         </div>
-        <div
-          className="p-4 sm:p-5 overflow-y-auto custom-scrollbar"
-          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
-        >
-          {children}
-        </div>
+        <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar overscroll-contain">{children}</div>
       </div>
     </div>
   );
@@ -787,8 +772,16 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
       const existingScript = document.querySelector('script[data-pokiza-html2pdf="true"]');
       if (existingScript) {
-        existingScript.addEventListener('load', () => resolve(window.html2pdf), { once: true });
-        existingScript.addEventListener('error', reject, { once: true });
+        const startedAt = Date.now();
+        const timer = window.setInterval(() => {
+          if (window.html2pdf) {
+            window.clearInterval(timer);
+            resolve(window.html2pdf);
+          } else if (Date.now() - startedAt > 12000) {
+            window.clearInterval(timer);
+            reject(new Error('Не удалось загрузить генератор PDF'));
+          }
+        }, 100);
         return;
       }
 
@@ -801,51 +794,66 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
       document.body.appendChild(script);
     });
 
+    let pdfMount = null;
+
     try {
-      setPrintMode(mode);
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      await new Promise(resolve => setTimeout(resolve, 350));
       await loadHtml2Pdf();
 
-      const element = document.getElementById('pdf-content-wrapper');
-      if (!element) throw new Error('Не удалось найти контент для PDF');
+      const html = mode === 'analytics'
+        ? buildAnalyticsPdfHtml({
+            data: pdfAnalyticsData,
+            currentMonthLabel: getMonthLabel(currentMonth),
+            kpiProgress,
+            allData: analytics,
+            months: timelineMonths,
+            appSettings
+          })
+        : buildContentPlanPdfHtml({
+            currentMonthLabel: getMonthLabel(currentMonth),
+            monthTasks: sortedMonthTasks,
+            platforms,
+            kpis,
+            appSettings
+          });
 
-      const printWidth = 794; // A4 portrait width in CSS pixels at 96dpi
-      const printHeight = Math.max(element.scrollHeight, 1123); // A4 portrait height in CSS pixels at 96dpi
-      const scale = Math.min(2, Math.max(1.5, window.devicePixelRatio || 1.5));
+      pdfMount = document.createElement('div');
+      pdfMount.setAttribute('data-pokiza-pdf-mount', 'true');
+      pdfMount.style.position = 'absolute';
+      pdfMount.style.left = '0';
+      pdfMount.style.top = '0';
+      pdfMount.style.width = '794px';
+      pdfMount.style.minHeight = '1123px';
+      pdfMount.style.backgroundColor = '#ffffff';
+      pdfMount.style.color = '#0f172a';
+      pdfMount.style.zIndex = '-1';
+      pdfMount.style.pointerEvents = 'none';
+      pdfMount.style.overflow = 'visible';
+      pdfMount.innerHTML = html;
+      document.body.appendChild(pdfMount);
+
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await new Promise(resolve => setTimeout(resolve, 120));
+
+      const element = pdfMount.querySelector('.pokiza-pdf-root');
+      if (!element) throw new Error('Не удалось подготовить PDF-шаблон');
 
       const opt = {
-        margin: [8, 8, 8, 8],
+        margin: 0,
         filename: fileName,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-          scale,
+          scale: Math.min(2, Math.max(1.5, window.devicePixelRatio || 1.5)),
           useCORS: true,
           allowTaint: false,
-          logging: false,
           backgroundColor: '#ffffff',
-          windowWidth: printWidth,
-          windowHeight: printHeight,
-          width: printWidth,
-          height: printHeight,
+          logging: false,
+          windowWidth: 794,
           scrollX: 0,
           scrollY: 0,
-          removeContainer: true,
-          onclone: (clonedDocument) => {
-            const clonedElement = clonedDocument.getElementById('pdf-content-wrapper');
-            if (clonedElement) {
-              clonedElement.style.position = 'static';
-              clonedElement.style.left = 'auto';
-              clonedElement.style.top = 'auto';
-              clonedElement.style.width = `${printWidth}px`;
-              clonedElement.style.backgroundColor = '#ffffff';
-              clonedElement.style.color = '#0f172a';
-              clonedElement.style.fontFamily = 'Arial, Helvetica, sans-serif';
-            }
-          }
+          removeContainer: true
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.pdf-avoid-break'] }
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.avoid-break', '.pdf-card', '.pdf-task-card'] }
       };
 
       const blob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
@@ -854,14 +862,23 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
       const file = typeof File !== 'undefined' ? new File([blob], fileName, { type: 'application/pdf' }) : null;
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 
-      if (isMobile && file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: fileName });
-          showToast('Успешно');
+      if (isMobile) {
+        if (file && navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+          try {
+            await navigator.share({ files: [file], title: fileName, text: fileName });
+            showToast('Файл готов для отправки', 'success');
+          } catch (shareError) {
+            console.warn('Share cancelled or failed', shareError);
+            showToast('Отправка отменена', 'error');
+          }
           return;
-        } catch (shareError) {
-          console.warn('Share cancelled or failed', shareError);
         }
+
+        const mobileUrl = URL.createObjectURL(blob);
+        window.open(mobileUrl, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(mobileUrl), 60000);
+        showToast('PDF открыт в новой вкладке', 'success');
+        return;
       }
 
       const url = URL.createObjectURL(blob);
@@ -877,9 +894,21 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
       console.error('PDF Error:', err);
       showToast(err instanceof Error ? err.message : 'Критическая ошибка генератора', 'error');
     } finally {
+      if (pdfMount) pdfMount.remove();
       setPrintMode(null);
     }
-  }, [currentMonth, showToast]);
+  }, [
+    currentMonth,
+    showToast,
+    pdfAnalyticsData,
+    kpiProgress,
+    analytics,
+    timelineMonths,
+    appSettings,
+    sortedMonthTasks,
+    platforms,
+    kpis
+  ]);
 
   const checkKpiLimits = useCallback((kpiIdsToCheck, currentTaskId = null) => {
     for (let kpiId of (kpiIdsToCheck || [])) {
@@ -1701,8 +1730,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
       {/* Mobile Drawer Menu */}
       {activeModal === 'mobileMenu' && (
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[9999] flex" onMouseDown={() => setActiveModal(null)}>
-          <div className="bg-white dark:bg-slate-800 w-[280px] h-full shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 border-r border-slate-200 dark:border-slate-700" onMouseDown={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[9999] flex overscroll-none" onMouseDown={() => setActiveModal(null)} onWheel={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }} onTouchMove={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}>
+          <div className="bg-white dark:bg-slate-800 w-[280px] h-full shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 border-r border-slate-200 dark:border-slate-700 overscroll-contain" onMouseDown={e => e.stopPropagation()} onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
              <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-lg text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600">{user.name[0]}</div>
                 <div>
@@ -2603,6 +2632,305 @@ function PdfPill({ children, color = PDF_COLORS.muted, bg = PDF_COLORS.panel }) 
       {children}
     </span>
   );
+}
+
+function escapePdfHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function pdfNumber(value) {
+  const n = Number(value || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function buildPdfBaseHtml({ title, subtitle, appSettings, body }) {
+  const brandName = escapePdfHtml(appSettings?.appName || 'ПОКИЗА');
+  const safeTitle = escapePdfHtml(title);
+  const safeSubtitle = escapePdfHtml(subtitle);
+  const created = new Date().toLocaleDateString('ru-RU');
+
+  return `
+    <div class="pokiza-pdf-root">
+      <style>
+        .pokiza-pdf-root, .pokiza-pdf-root * { box-sizing: border-box; }
+        .pokiza-pdf-root {
+          width: 794px;
+          min-height: 1123px;
+          padding: 32px;
+          margin: 0;
+          background: #ffffff;
+          color: #0f172a;
+          font-family: Arial, Helvetica, sans-serif;
+          line-height: 1.35;
+        }
+        .pdf-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 20px;
+          padding-bottom: 16px;
+          margin-bottom: 18px;
+          border-bottom: 3px solid #dc2626;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .pdf-brand {
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+          color: #dc2626;
+          font-size: 21px;
+          font-weight: 900;
+          letter-spacing: 0.3px;
+          text-transform: uppercase;
+          margin-bottom: 6px;
+        }
+        .pdf-logo-dot {
+          width: 24px;
+          height: 24px;
+          border-radius: 8px;
+          background: #dc2626;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 900;
+        }
+        .pdf-title { font-size: 21px; font-weight: 900; color: #0f172a; margin-bottom: 4px; }
+        .pdf-subtitle { font-size: 12px; font-weight: 700; color: #475569; }
+        .pdf-created-label { font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+        .pdf-created-value { font-size: 12px; font-weight: 800; color: #0f172a; }
+        .pdf-section-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 18px 0 10px;
+          font-size: 15px;
+          font-weight: 900;
+          color: #0f172a;
+          break-after: avoid;
+        }
+        .pdf-section-title::before { content: ''; width: 8px; height: 8px; border-radius: 99px; background: #dc2626; display: inline-block; }
+        .pdf-grid { display: grid; gap: 10px; }
+        .pdf-grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .pdf-grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .pdf-card {
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 13px;
+          background: #f8fafc;
+          break-inside: avoid;
+          page-break-inside: avoid;
+          overflow: hidden;
+        }
+        .pdf-card-label { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.35px; margin-bottom: 7px; }
+        .pdf-card-value { font-size: 24px; font-weight: 900; color: #0f172a; }
+        .pdf-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #e2e8f0; margin-bottom: 14px; }
+        .pdf-table th { background: #f8fafc; color: #475569; font-size: 10px; font-weight: 900; text-align: left; padding: 8px; border: 1px solid #e2e8f0; }
+        .pdf-table td { color: #0f172a; font-size: 10.5px; font-weight: 700; padding: 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+        .pdf-right { text-align: right !important; }
+        .pdf-task-list { display: flex; flex-direction: column; gap: 10px; }
+        .pdf-task-card {
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          background: #ffffff;
+          overflow: hidden;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .pdf-task-top {
+          display: grid;
+          grid-template-columns: 96px 1fr 90px;
+          gap: 10px;
+          align-items: center;
+          padding: 9px 11px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .pdf-date { color: #0f172a; font-size: 12px; font-weight: 900; white-space: nowrap; }
+        .pdf-pill {
+          display: inline-block;
+          max-width: 100%;
+          padding: 4px 8px;
+          margin: 0 5px 5px 0;
+          border-radius: 999px;
+          border: 1px solid #e2e8f0;
+          background: #f1f5f9;
+          color: #475569;
+          font-size: 10px;
+          font-weight: 900;
+          line-height: 1.2;
+          word-break: break-word;
+        }
+        .pdf-pill-red { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+        .pdf-pill-blue { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+        .pdf-status { display: inline-block; border-radius: 999px; padding: 5px 8px; font-size: 10px; font-weight: 900; white-space: nowrap; }
+        .pdf-status-pending { color: #d97706; background: #fffbeb; border: 1px solid #fde68a; }
+        .pdf-status-done { color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .pdf-task-body { padding: 12px 14px 14px; }
+        .pdf-task-number { font-size: 9px; color: #64748b; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 5px; }
+        .pdf-task-title { font-size: 14px; color: #0f172a; font-weight: 900; line-height: 1.35; margin-bottom: 7px; word-break: break-word; }
+        .pdf-task-text { color: #475569; font-size: 12px; font-weight: 650; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+        .pdf-link { margin-top: 9px; color: #2563eb; font-size: 10.5px; line-height: 1.4; font-weight: 800; word-break: break-all; }
+        .pdf-note { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 13px; color: #334155; font-size: 12px; font-weight: 650; line-height: 1.55; white-space: pre-wrap; word-break: break-word; break-inside: avoid; }
+        .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+      </style>
+
+      <div class="pdf-header">
+        <div style="min-width:0;">
+          <div class="pdf-brand"><span class="pdf-logo-dot">P</span><span>${brandName}</span></div>
+          <div class="pdf-title">${safeTitle}</div>
+          <div class="pdf-subtitle">${safeSubtitle}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="pdf-created-label">Дата создания</div>
+          <div class="pdf-created-value">${created}</div>
+        </div>
+      </div>
+
+      ${body}
+    </div>
+  `;
+}
+
+function buildContentPlanPdfHtml({ currentMonthLabel, monthTasks, platforms, kpis, appSettings }) {
+  const tasks = Array.isArray(monthTasks) ? monthTasks : [];
+  const completedCount = tasks.filter(t => t.status === 'completed').length;
+  const pendingCount = tasks.length - completedCount;
+
+  const taskCards = tasks.length ? tasks.map((task, index) => {
+    const platform = platforms.find(p => p.id === task.platformId);
+    const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
+    const isCompleted = task.status === 'completed';
+    const kpiHtml = taskKpis.length
+      ? taskKpis.map(k => `<span class="pdf-pill pdf-pill-blue">${escapePdfHtml(k.title)}</span>`).join('')
+      : '<span class="pdf-pill">Без формата</span>';
+    const linkHtml = task.link ? `<div class="pdf-link">Ссылка: ${escapePdfHtml(task.link)}</div>` : '';
+
+    return `
+      <div class="pdf-task-card">
+        <div class="pdf-task-top">
+          <div class="pdf-date">${escapePdfHtml(formatPdfDate(task.date))}</div>
+          <div style="min-width:0;">
+            <span class="pdf-pill pdf-pill-red">${escapePdfHtml(platform?.name || 'Платформа')}</span>
+            ${kpiHtml}
+          </div>
+          <div style="text-align:right;"><span class="pdf-status ${isCompleted ? 'pdf-status-done' : 'pdf-status-pending'}">${isCompleted ? 'Готово' : 'В плане'}</span></div>
+        </div>
+        <div class="pdf-task-body">
+          <div class="pdf-task-number">Публикация #${index + 1}</div>
+          <div class="pdf-task-title">${escapePdfHtml(cleanPdfText(task.title, 'Без названия'))}</div>
+          <div class="pdf-task-text">${escapePdfHtml(cleanPdfText(task.text, 'Описание не добавлено.'))}</div>
+          ${linkHtml}
+        </div>
+      </div>
+    `;
+  }).join('') : '<div class="pdf-note">Нет задач в этом месяце.</div>';
+
+  const body = `
+    <div class="pdf-grid pdf-grid-3 avoid-break" style="margin-bottom:16px;">
+      <div class="pdf-card"><div class="pdf-card-label">Всего задач</div><div class="pdf-card-value">${tasks.length}</div></div>
+      <div class="pdf-card" style="background:#f0fdf4;"><div class="pdf-card-label">Готово</div><div class="pdf-card-value" style="color:#16a34a;">${completedCount}</div></div>
+      <div class="pdf-card" style="background:#fffbeb;"><div class="pdf-card-label">В плане</div><div class="pdf-card-value" style="color:#d97706;">${pendingCount}</div></div>
+    </div>
+    <div class="pdf-section-title">Список публикаций</div>
+    <div class="pdf-task-list">${taskCards}</div>
+  `;
+
+  return buildPdfBaseHtml({
+    title: `Контент-план: ${currentMonthLabel}`,
+    subtitle: 'Вертикальный A4-отчет: даты, площадки, форматы, описания, статусы и ссылки',
+    appSettings,
+    body
+  });
+}
+
+function buildAnalyticsPdfHtml({ data, currentMonthLabel, kpiProgress, allData, months, appSettings }) {
+  const safeData = data || {};
+  const interactions = pdfNumber(safeData.likes) + pdfNumber(safeData.comments);
+  const comparisonData = (months || []).map(m => {
+    const d = allData?.[m.value];
+    return {
+      value: m.value,
+      name: String(m.label || '').split(' ')[0],
+      followers: d?.isSubmitted ? pdfNumber(d.followers) : null,
+      reach: d?.isSubmitted ? pdfNumber(d.reach) : null,
+      likes: d?.isSubmitted ? pdfNumber(d.likes) : null,
+      comments: d?.isSubmitted ? pdfNumber(d.comments) : null,
+      er: d?.isSubmitted ? pdfNumber(d.er) : null,
+      hasData: Boolean(d?.isSubmitted),
+    };
+  });
+
+  const tableRows = comparisonData.map(item => `
+    <tr>
+      <td>${escapePdfHtml(item.name || '-')}</td>
+      <td class="pdf-right">${item.hasData ? item.followers : '-'}</td>
+      <td class="pdf-right">${item.hasData ? item.reach : '-'}</td>
+      <td class="pdf-right">${item.hasData ? item.likes : '-'}</td>
+      <td class="pdf-right">${item.hasData ? item.comments : '-'}</td>
+      <td class="pdf-right" style="color:${item.hasData ? '#dc2626' : '#64748b'};font-weight:900;">${item.hasData ? `${item.er}%` : '-'}</td>
+    </tr>
+  `).join('');
+
+  const kpiHtml = (kpiProgress || []).length ? (kpiProgress || []).map(kpi => {
+    const target = Math.max(1, pdfNumber(kpi.target) || 1);
+    const current = pdfNumber(kpi.current);
+    const percent = Math.min(100, Math.round((current / target) * 100));
+    return `
+      <div class="pdf-card" style="background:#ffffff;">
+        <div class="pdf-card-label">${escapePdfHtml(kpi.platformName || 'Платформа')}</div>
+        <div style="font-size:12px;font-weight:900;color:#0f172a;min-height:31px;word-break:break-word;">${escapePdfHtml(kpi.title || 'Формат')}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:9px;">
+          <div style="flex:1;height:8px;border-radius:999px;background:#f1f5f9;overflow:hidden;"><div style="width:${percent}%;height:100%;background:${percent >= 100 ? '#16a34a' : '#dc2626'};border-radius:999px;"></div></div>
+          <div style="font-size:12px;font-weight:900;color:#0f172a;white-space:nowrap;">${current}/${target}</div>
+        </div>
+      </div>
+    `;
+  }).join('') : '<div class="pdf-note">KPI не настроены.</div>';
+
+  const body = `
+    <div class="pdf-grid pdf-grid-4 avoid-break" style="margin-bottom:16px;">
+      <div class="pdf-card"><div class="pdf-card-label">Подписчики</div><div class="pdf-card-value">${escapePdfHtml(safeData.followers || 0)}</div></div>
+      <div class="pdf-card" style="background:#eff6ff;"><div class="pdf-card-label">Охват</div><div class="pdf-card-value" style="color:#2563eb;">${escapePdfHtml(safeData.reach || 0)}</div></div>
+      <div class="pdf-card" style="background:#f5f3ff;"><div class="pdf-card-label">Взаимодействия</div><div class="pdf-card-value" style="color:#7c3aed;">${interactions}</div></div>
+      <div class="pdf-card" style="background:#fef2f2;"><div class="pdf-card-label">ER</div><div class="pdf-card-value" style="color:#dc2626;">${escapePdfHtml(safeData.er || 0)}%</div></div>
+    </div>
+
+    <div class="pdf-section-title">Динамика за 12 месяцев</div>
+    <table class="pdf-table">
+      <thead>
+        <tr>
+          <th style="width:110px;">Месяц</th>
+          <th class="pdf-right">Подписчики</th>
+          <th class="pdf-right">Охват</th>
+          <th class="pdf-right">Лайки</th>
+          <th class="pdf-right">Комментарии</th>
+          <th class="pdf-right">ER</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+
+    <div class="pdf-section-title">Выполнение контент-плана</div>
+    <div class="pdf-grid pdf-grid-3" style="margin-bottom:14px;">${kpiHtml}</div>
+
+    <div class="pdf-section-title">Резюме специалиста</div>
+    <div class="pdf-note">${escapePdfHtml(cleanPdfText(safeData.text, 'Комментарий не добавлен.'))}</div>
+  `;
+
+  return buildPdfBaseHtml({
+    title: `Аналитика за ${currentMonthLabel}`,
+    subtitle: 'Вертикальный A4-отчет: показатели, динамика, KPI и комментарий',
+    appSettings,
+    body
+  });
 }
 
 function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months, appSettings }) {
