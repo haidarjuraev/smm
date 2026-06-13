@@ -11,10 +11,9 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v8-2026-06-13';
+const APP_VERSION = 'd1-sync-v9-2026-06-13';
 
-// lucide-react в текущей сборке не экспортирует эти brand icons.
-// Используем стабильные иконки, чтобы build не падал.
+// Используем стабильные иконки для исключения проблем билда
 const Instagram = Globe;
 const Facebook = Users;
 const Youtube = PlayCircle;
@@ -48,29 +47,11 @@ const FORMAT_COLORS = [
   { id: 'teal', bg: 'bg-teal-500', text: 'text-teal-500', border: 'border-teal-500', name: 'Бирюзовый' },
 ];
 
-const INITIAL_PLATFORMS = [
-  { id: 'p1', name: 'Instagram', account: '@pokiza_tj', iconName: 'instagram' },
-  { id: 'p2', name: 'Facebook', account: 'Pokiza Official', iconName: 'facebook' },
-  { id: 'p3', name: 'TikTok', account: '@pokiza_brand', iconName: 'tiktok' },
-];
-
-const INITIAL_KPIS = [
-  { id: 'k1', platformId: 'p1', title: 'Статичные посты', target: 3, colorId: 'teal' },
-  { id: 'k2', platformId: 'p1', title: 'Reels-видео', target: 10, colorId: 'purple' },
-  { id: 'k3', platformId: 'p1', title: 'Интерактивные Stories', target: 12, colorId: 'orange' },
-  { id: 'k4', platformId: 'p1', title: 'Акции/Розыгрыши', target: 1, colorId: 'red' },
-  { id: 'k5', platformId: 'p2', title: 'Статичные посты', target: 5, colorId: 'blue' },
-  { id: 'k6', platformId: 'p3', title: 'TikTok видео', target: 8, colorId: 'green' },
-];
-
-const INITIAL_TASKS = [
-  { id: 1, month: '2026-06', title: 'Розыгрыш техники', text: 'Условия конкурса: подписка, лайк...', kpiIds: ['k2', 'k4'], platformId: 'p1', status: 'completed', date: '2026-06-12', link: 'https://inst.com/p/1' },
-  { id: 2, month: '2026-06', title: 'Опрос по качеству', text: 'Сториз с опросом', kpiIds: ['k3'], platformId: 'p1', status: 'pending', date: '2026-06-14', link: '' },
-  { id: 3, month: '2026-06', title: 'Устаревший пост', text: 'Пост который забыли выложить', kpiIds: ['k1'], platformId: 'p1', status: 'pending', date: '2026-06-01', link: '' },
-];
-
-const INITIAL_ANALYTICS = {
-  '2026-05': { followers: 12500, reach: 45000, likes: 3200, comments: 450, er: 8.11, text: 'Хороший рост за счет Reels', isSubmitted: true }
+// Функция для получения локальной даты, чтобы избежать смещения часовых поясов
+const getLocalISODate = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
 };
 
 const getFormatColor = (kpi) => {
@@ -80,9 +61,9 @@ const getFormatColor = (kpi) => {
     if (found) return found;
   }
   let sum = 0;
-  const strId = String(kpi.id); // Защита от краша (если id = число)
+  const strId = String(kpi.id || '');
   for(let i=0; i<strId.length; i++) sum += strId.charCodeAt(i);
-  return FORMAT_COLORS[sum % FORMAT_COLORS.length];
+  return FORMAT_COLORS[sum % FORMAT_COLORS.length] || FORMAT_COLORS[0];
 };
 
 const getPlatformIcon = (platform, size = 18) => {
@@ -91,7 +72,7 @@ const getPlatformIcon = (platform, size = 18) => {
     const found = PLATFORM_ICONS.find(i => i.id === platform.iconName);
     if (found) { const Icon = found.icon; return <Icon size={size} strokeWidth={1.5} />; }
   }
-  const n = platform.name?.toLowerCase() || '';
+  const n = String(platform.name || '').toLowerCase();
   if (n.includes('inst')) return <Instagram size={size} strokeWidth={1.5} />;
   if (n.includes('face')) return <Facebook size={size} strokeWidth={1.5} />;
   if (n.includes('tik')) return <Music size={size} strokeWidth={1.5} />;
@@ -144,8 +125,30 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
 }
 
 export default function AppWrapper() {
-  const [usersDb, setUsersDb] = useState(INITIAL_USERS);
-  const [user, setUser] = useState(null);
+  // Инициализация из localStorage для сохранения сессии
+  const [usersDb, setUsersDb] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pokiza_usersDb');
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    } catch { return INITIAL_USERS; }
+  });
+
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pokiza_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  // Синхронизация с localStorage
+  useEffect(() => {
+    localStorage.setItem('pokiza_usersDb', JSON.stringify(usersDb));
+  }, [usersDb]);
+
+  useEffect(() => {
+    if (user) localStorage.setItem('pokiza_user', JSON.stringify(user));
+    else localStorage.removeItem('pokiza_user');
+  }, [user]);
   
   if (!user) return <LoginScreen usersDb={usersDb} onLogin={setUser} />;
   return <MainApp user={user} usersDb={usersDb} setUsersDb={setUsersDb} onLogout={() => setUser(null)} onUpdateUser={setUser} />;
@@ -227,6 +230,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
 
   const apiRequest = useCallback(async (path, options = {}) => {
     const response = await fetch(path, {
+      cache: 'no-store',
       ...options,
       headers: {
         'content-type': 'application/json',
@@ -257,11 +261,12 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     try {
       if (!silent) setIsLoadingData(true);
 
+      const ts = Date.now();
       const [platformsData, kpisData, tasksData, analyticsData] = await Promise.all([
-        apiRequest('/api/platforms'),
-        apiRequest('/api/kpis'),
-        apiRequest(`/api/tasks?month=${encodeURIComponent(month)}`),
-        apiRequest('/api/analytics')
+        apiRequest(`/api/platforms?ts=${ts}`),
+        apiRequest(`/api/kpis?ts=${ts}`),
+        apiRequest(`/api/tasks?month=${encodeURIComponent(month)}&ts=${ts}`),
+        apiRequest(`/api/analytics?ts=${ts}`)
       ]);
 
       setPlatforms(Array.isArray(platformsData) ? platformsData : []);
@@ -282,6 +287,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   useEffect(() => {
     loadData(currentMonth);
 
+    // Автосинхронизация между admin и smm
     const timer = setInterval(() => {
       if (!document.hidden) loadData(currentMonth, true);
     }, 10000);
@@ -319,7 +325,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     showToast('Подготовка отчета, подождите...', 'success');
     setPrintMode(mode);
     
-    // Асинхронная задержка для гарантированного рендера DOM узла React'ом
+    // Задержка для гарантии рендера скрытого DOM узла перед снимком
     await new Promise(resolve => setTimeout(resolve, 800));
     
     const element = document.getElementById('pdf-content-wrapper');
@@ -329,27 +335,36 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
         return;
     }
 
-    const generate = () => {
-      const opt = {
-        margin:       [10, 10, 10, 10],
-        filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: mode === 'plan' ? 'landscape' : 'portrait' }
-      };
-      
-      window.html2pdf().set(opt).from(element).save().then(() => {
-         setPrintMode(null);
-         showToast('Файл успешно скачан', 'success');
-      });
+    const doPrint = async () => {
+      try {
+        const opt = {
+          margin:       [10, 10, 10, 10],
+          filename:     `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, logging: false },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: mode === 'plan' ? 'landscape' : 'portrait' }
+        };
+        
+        await window.html2pdf().set(opt).from(element).save();
+        showToast('Файл успешно скачан', 'success');
+      } catch (err) {
+        console.error('PDF Error:', err);
+        showToast('Ошибка при генерации файла', 'error');
+      } finally {
+        setPrintMode(null);
+      }
     };
 
     if (window.html2pdf) {
-      generate();
+      doPrint();
     } else {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = generate;
+      script.onload = doPrint;
+      script.onerror = () => {
+         showToast('Не удалось загрузить библиотеку для PDF', 'error');
+         setPrintMode(null);
+      };
       document.body.appendChild(script);
     }
   }, [currentMonth, showToast]);
@@ -358,7 +373,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     for (let kpiId of (kpiIdsToCheck || [])) {
        const kpi = kpis.find(k => k.id === kpiId);
        if (!kpi) continue;
-       const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && t.id !== currentTaskId).length;
+       // Строгая конвертация ID для точного сравнения
+       const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && String(t.id) !== String(currentTaskId)).length;
        if (currentCount >= kpi.target) {
           showToast(`Лимит формата "${kpi.title}" исчерпан (${kpi.target} макс)`, 'error');
           return false;
@@ -422,7 +438,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       return false;
     } finally {
       if (!cleanTaskData.id) {
-        window.setTimeout(() => { taskSaveLockRef.current = false; }, 700);
+        window.setTimeout(() => { taskSaveLockRef.current = false; }, 500);
       }
     }
   }, [apiRequest, checkKpiLimits, currentMonth, loadData, platforms, showToast]);
@@ -571,7 +587,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
   ];
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalISODate();
 
   return (
     <>
@@ -1248,9 +1264,9 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       )}
     </div>
 
-    {}
+    {/* Блок для генерации PDF, скрытый из области видимости, но с реальными размерами */}
     {printMode && (
-      <div className="absolute top-0 left-0 w-full z-0 overflow-hidden" style={{ height: '0', opacity: 0 }}>
+      <div className="fixed -left-[9999px] top-0 z-[-1] overflow-visible">
         <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 max-w-5xl mx-auto w-[1000px]">
           {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} allData={analytics} months={MONTHS} />}
           {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} />}
@@ -1325,9 +1341,12 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
   const handleSave = async () => {
     if(isSubmitting || !data.title.trim()) return;
     setIsSubmitting(true);
-    const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
-    if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
-    setIsSubmitting(false);
+    try {
+      const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
+      if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const availableKpis = kpis.filter(k => k.platformId === data.platformId);
@@ -1370,9 +1389,12 @@ function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) 
   const handleSave = async () => {
     if (isSubmitting || !data.title.trim()) return;
     setIsSubmitting(true);
-    const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
-    if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
-    setIsSubmitting(false);
+    try {
+      const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
+      if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const availableKpis = kpis.filter(k => k.platformId === data.platformId);
@@ -1399,9 +1421,8 @@ function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) 
   )
 }
 
-
 function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
-  const [formData, setFormData] = useState(task || { title: '', text: '', date: new Date().toISOString().split('T')[0], platformId: platforms[0]?.id || '', kpiIds: [], link: '' });
+  const [formData, setFormData] = useState(task || { title: '', text: '', date: getLocalISODate(), platformId: platforms[0]?.id || '', kpiIds: [], link: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePlatformChange = (e) => {
@@ -1421,8 +1442,11 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
   const handleSubmit = async () => {
     if (isSubmitting || !formData.title.trim()) return;
     setIsSubmitting(true);
-    const success = await onSave({ ...formData, title: formData.title.trim(), text: (formData.text || '').trim(), link: (formData.link || '').trim() });
-    if (!success) setIsSubmitting(false);
+    try {
+      await onSave({ ...formData, title: formData.title.trim(), text: (formData.text || '').trim(), link: (formData.link || '').trim() });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
