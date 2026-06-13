@@ -1,9 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pokiza-smm",
-  "compatibility_date": "2026-06-12",
+  "compatibility_date": "2026-06-13",
+  "main": "src/worker.js",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pokiza-smm-db",
+      "database_id": "8f13c0ff-ad82-4657-9d20-cbc1c7f0c9f7"
+    }
+  ]
 }
