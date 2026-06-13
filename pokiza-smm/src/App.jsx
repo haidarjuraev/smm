@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v19-pdf-stable-no-white-screen';
+const APP_VERSION = 'd1-sync-v20-white-screen-login-fix';
 
 const Instagram = Globe;
 const Facebook = Users;
@@ -756,6 +756,9 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     return pa && pa.isSubmitted ? pa : null;
   }, [analytics, currentMonth]);
 
+  const todayStr = getLocalISODate();
+  const pdfAnalyticsData = currentAnalytics.isSubmitted ? currentAnalytics : (analyticsDrafts[currentMonth] || currentAnalytics);
+
   const handlePdfAction = useCallback(async (mode) => {
     const fileName = `Pokiza_${mode === 'analytics' ? 'Analytics' : 'ContentPlan'}_${currentMonth}.pdf`;
     showToast('Подготовка PDF...', 'success');
@@ -1089,9 +1092,6 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     { id: 'analytics', label: 'Анализ', icon: BarChart3 },
     { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
   ];
-
-  const todayStr = getLocalISODate();
-  const pdfAnalyticsData = currentAnalytics.isSubmitted ? currentAnalytics : (analyticsDrafts[currentMonth] || currentAnalytics);
 
   return (
     <>
