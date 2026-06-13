@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
   CheckCircle2, Clock, AlertCircle, Paperclip, 
   BarChart3, LogOut, Plus, Trash2, Edit2, Download, 
@@ -11,7 +11,10 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-new-ui-2026-06-13';
+const APP_VERSION = 'd1-sync-mobile-ui-2026-06-13';
+
+// lucide-react в текущей сборке не экспортирует эти brand icons.
+// Используем стабильные иконки, чтобы build не падал.
 const Instagram = Globe;
 const Facebook = Users;
 const Youtube = PlayCircle;
@@ -113,13 +116,13 @@ function Toast({ message, type, onClose }) {
 
 function Modal({ title, onClose, children, maxWidth = 'max-w-md' }) {
   return (
-    <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-4 print:hidden animate-in fade-in duration-200" onMouseDown={onClose}>
-      <div className={`bg-white dark:bg-slate-900 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh] sm:max-h-[90vh] mb-10 sm:mb-0 border border-slate-200 dark:border-slate-800`} onMouseDown={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
-          <h3 className="font-semibold text-lg text-slate-900 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors active:scale-95"><X size={20}/></button>
+    <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in duration-200" onMouseDown={onClose}>
+      <div className={`bg-white dark:bg-slate-900 rounded-2xl w-full ${maxWidth} shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-bottom))] sm:max-h-[90vh] border border-slate-200 dark:border-slate-800`} onMouseDown={e => e.stopPropagation()}>
+        <div className="px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+          <h3 className="font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate pr-3">{title}</h3>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors active:scale-95 shrink-0"><X size={20}/></button>
         </div>
-        <div className="p-5 overflow-y-auto custom-scrollbar">{children}</div>
+        <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar">{children}</div>
       </div>
     </div>
   );
@@ -202,10 +205,11 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   const [expandedPlatforms, setExpandedPlatforms] = useState({});
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: () => {} });
   const [printMode, setPrintMode] = useState(null);
+  const taskSaveLockRef = useRef(false);
 
   const [tasks, setTasks] = useState([]);
-  const [kpis, setKpis] = useState(INITIAL_KPIS);
-  const [platforms, setPlatforms] = useState(INITIAL_PLATFORMS);
+  const [kpis, setKpis] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
   const [analytics, setAnalytics] = useState({});
   const [isLoadingData, setIsLoadingData] = useState(false);
 
@@ -225,13 +229,14 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     const response = await fetch(path, {
       ...options,
       headers: {
-        'content-type': 'application/json; charset=utf-8',
+        'content-type': 'application/json',
         ...(options.headers || {})
       }
     });
 
     const text = await response.text();
     let data = null;
+
     if (text) {
       try {
         data = JSON.parse(text);
@@ -263,6 +268,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       setKpis(Array.isArray(kpisData) ? kpisData : []);
       setTasks(Array.isArray(tasksData) ? tasksData : []);
       setAnalytics(analyticsData && typeof analyticsData === 'object' ? analyticsData : {});
+
       return true;
     } catch (error) {
       console.error('Ошибка загрузки данных из D1:', error);
@@ -284,7 +290,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   }, [currentMonth, loadData]);
 
   const monthTasks = useMemo(() => tasks.filter(t => t.month === currentMonth), [tasks, currentMonth]);
-  
+  const sortedMonthTasks = useMemo(() => [...monthTasks].sort((a, b) => new Date(a.date) - new Date(b.date)), [monthTasks]);
+
   const kpiProgress = useMemo(() => {
     let filteredKpis = kpis;
     if (selectedDashboardPlatform !== 'all') {
@@ -351,7 +358,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     for (let kpiId of (kpiIdsToCheck || [])) {
        const kpi = kpis.find(k => k.id === kpiId);
        if (!kpi) continue;
-       const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && String(t.id) !== String(currentTaskId)).length;
+       const currentCount = monthTasks.filter(t => t.kpiIds?.includes(kpiId) && t.id !== currentTaskId).length;
        if (currentCount >= kpi.target) {
           showToast(`Лимит формата "${kpi.title}" исчерпан (${kpi.target} макс)`, 'error');
           return false;
@@ -361,30 +368,51 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
   }, [kpis, monthTasks, showToast]);
 
   const saveTask = useCallback(async (taskData) => {
-    if (!checkKpiLimits(taskData.kpiIds, taskData.id)) return false;
+    const cleanTaskData = {
+      ...taskData,
+      title: (taskData.title || '').trim(),
+      text: (taskData.text || '').trim(),
+      link: (taskData.link || '').trim(),
+      kpiIds: taskData.kpiIds || [],
+    };
+
+    if (!cleanTaskData.title) {
+      showToast('Введите название задачи', 'error');
+      return false;
+    }
+
+    if (!cleanTaskData.date) {
+      showToast('Укажите дату задачи', 'error');
+      return false;
+    }
+
+    if (!checkKpiLimits(cleanTaskData.kpiIds, cleanTaskData.id)) return false;
+
+    if (!cleanTaskData.id && taskSaveLockRef.current) return false;
+    if (!cleanTaskData.id) taskSaveLockRef.current = true;
 
     try {
-      const id = taskData.id ? String(taskData.id) : `task_${Date.now()}`;
-      const month = taskData.month || currentMonth || taskData.date?.slice(0, 7);
-      const status = taskData.link ? 'completed' : taskData.status || 'pending';
+      const id = cleanTaskData.id ? String(cleanTaskData.id) : `task_${Date.now()}`;
+      const month = cleanTaskData.month || currentMonth || cleanTaskData.date.slice(0, 7);
+      const status = cleanTaskData.link ? 'completed' : cleanTaskData.status || 'pending';
 
       await apiRequest('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
           id,
           month,
-          title: taskData.title,
-          text: taskData.text || '',
-          platformId: taskData.platformId || platforms[0]?.id || null,
+          title: cleanTaskData.title,
+          text: cleanTaskData.text || '',
+          platformId: cleanTaskData.platformId || platforms[0]?.id || null,
           status,
-          date: taskData.date,
-          link: taskData.link || '',
-          kpiIds: taskData.kpiIds || []
+          date: cleanTaskData.date,
+          link: cleanTaskData.link || '',
+          kpiIds: cleanTaskData.kpiIds || []
         })
       });
 
       await loadData(currentMonth, true);
-      showToast(taskData.id ? 'Задача обновлена' : 'Успешно сохранено');
+      showToast(cleanTaskData.id ? 'Задача обновлена' : 'Успешно сохранено');
       setActiveModal(null);
       setEditingItem(null);
       return true;
@@ -392,6 +420,10 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
       console.error('Ошибка сохранения задачи:', error);
       showToast(error.message || 'Не удалось сохранить задачу', 'error');
       return false;
+    } finally {
+      if (!cleanTaskData.id) {
+        window.setTimeout(() => { taskSaveLockRef.current = false; }, 700);
+      }
     }
   }, [apiRequest, checkKpiLimits, currentMonth, loadData, platforms, showToast]);
 
@@ -630,8 +662,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8 relative scroll-smooth custom-scrollbar pb-32 md:pb-8">
-          <div className="max-w-6xl mx-auto space-y-6 h-full pb-24 md:pb-0">
+        <main className="flex-1 overflow-y-auto px-4 pt-4 sm:px-8 sm:pt-8 relative scroll-smooth custom-scrollbar pb-[calc(7rem_+_env(safe-area-inset-bottom))] md:pb-8">
+          <div className="max-w-6xl mx-auto space-y-6 min-h-full pb-[calc(2rem_+_env(safe-area-inset-bottom))] md:pb-0">
             
             {/* Mobile Context Header */}
             <div className="md:hidden flex items-center justify-between mb-2">
@@ -722,8 +754,53 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                   </button>
                 </div>
                 
-                <div className={`border rounded-3xl shadow-sm overflow-x-auto ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
-                  <table className="w-full text-left border-collapse min-w-[800px]">
+                <div className="md:hidden space-y-3">
+                  <InlineTaskCardEditor 
+                    currentMonth={currentMonth} platforms={platforms} kpis={kpis} theme={theme} 
+                    onSave={saveTask} 
+                  />
+
+                  {sortedMonthTasks.length === 0 ? (
+                    <div className={`p-8 text-center text-slate-400 font-medium text-sm border rounded-3xl ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>Нет задач в этом месяце</div>
+                  ) : sortedMonthTasks.map(task => {
+                    const platform = platforms.find(p => p.id === task.platformId);
+                    const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
+                    const isOverdue = task.status !== 'completed' && task.date < todayStr;
+
+                    return (
+                      <div key={task.id} className={`p-4 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase text-slate-400 mb-1">{task.date.split('-').reverse().join('.')}</div>
+                            <h3 className="font-semibold text-sm text-slate-900 dark:text-white break-words">{task.title}</h3>
+                          </div>
+                          {task.status === 'completed' ? (
+                            <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-green-500/10 text-green-600 border border-green-500/20 whitespace-nowrap"><CheckCircle2 size={12}/> Готово</span>
+                          ) : isOverdue ? (
+                            <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-red-500/10 text-red-600 border border-red-500/20 whitespace-nowrap"><AlertCircle size={12}/> Просрочено</span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20 whitespace-nowrap"><Clock size={12}/> В плане</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <span className={`text-[10px] font-semibold uppercase flex items-center gap-1.5 px-2 py-1 rounded-lg ${theme==='dark'?'bg-slate-800 text-red-400':'bg-slate-50 text-red-600'}`}>{getPlatformIcon(platform, 12)} {platform?.name}</span>
+                          {taskKpis.map((k, i) => {
+                            const colorClass = getFormatColor(k);
+                            return <span key={i} className={`text-[10px] font-medium px-2 py-1 rounded-lg border inline-flex items-center gap-1.5 ${theme==='dark' ? `bg-slate-800 ${colorClass.border} ${colorClass.text}` : `bg-white shadow-sm ${colorClass.border} ${colorClass.text}`}`}><div className={`w-1.5 h-1.5 rounded-full ${colorClass.bg}`}></div>{k.title}</span>
+                          })}
+                        </div>
+                        {task.text && <p className="text-xs font-medium text-slate-500 leading-relaxed mb-4 break-words">{task.text}</p>}
+                        <div className="flex justify-end gap-2">
+                          <button onClick={()=> {setEditingItem(task); setActiveModal('addTask');}} className="p-2 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors active:scale-95"><Edit2 size={16}/></button>
+                          <button onClick={()=> deleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors active:scale-95"><Trash2 size={16}/></button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className={`hidden md:block border rounded-3xl shadow-sm overflow-hidden ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
+                  <table className="w-full text-left border-collapse table-fixed">
                     <thead>
                       <tr className={`border-b text-[10px] font-semibold uppercase tracking-wider ${theme==='dark'?'border-slate-800 text-slate-400':'border-slate-100 text-slate-500 bg-slate-50/50'}`}>
                         <th className="p-4 w-36">Дата</th>
@@ -738,7 +815,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
                         onSave={saveTask} 
                       />
                       
-                      {monthTasks.sort((a,b) => new Date(a.date) - new Date(b.date)).map(task => {
+                      {sortedMonthTasks.map(task => {
                            const platform = platforms.find(p => p.id === task.platformId);
                            const taskKpis = task.kpiIds?.map(id => kpis.find(k => k.id === id)).filter(Boolean) || [];
                            const isOverdue = task.status !== 'completed' && task.date < todayStr;
@@ -946,7 +1023,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
         </main>
         
         {/* Mobile Bottom Navigation */}
-        <nav className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t pb-safe backdrop-blur-xl transition-transform duration-300 ${printMode ? 'translate-y-full' : 'translate-y-0'} ${theme==='dark'?'bg-[#111]/90 border-slate-800':'bg-white/95 border-slate-200'}`}>
+        <nav style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} className={`md:hidden fixed bottom-0 left-0 w-full z-40 border-t backdrop-blur-xl transition-transform duration-300 ${printMode ? 'translate-y-full' : 'translate-y-0'} ${theme==='dark'?'bg-[#111]/90 border-slate-800':'bg-white/95 border-slate-200'}`}>
            <div className="flex justify-around items-end h-16 px-2 pb-2">
               {MOBILE_NAV_ITEMS.slice(0,2).map(item => (
                  <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors active:scale-95 ${activeTab === item.id ? (theme==='dark'?'text-red-400':'text-red-600') : 'text-slate-400'}`}>
@@ -1175,8 +1252,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser }) {
     {printMode && (
       <div className="absolute top-0 left-0 w-full z-0 overflow-hidden" style={{ height: '0', opacity: 0 }}>
         <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 max-w-5xl mx-auto w-[1000px]">
-          {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} />}
-          {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={monthTasks.sort((a,b) => new Date(a.date) - new Date(b.date))} platforms={platforms} kpis={kpis} />}
+          {printMode === 'analytics' && <AnalyticsPrintView data={currentAnalytics} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} allData={analytics} months={MONTHS} />}
+          {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} />}
         </div>
       </div>
     )}
@@ -1239,19 +1316,18 @@ const TaskRow = React.memo(function TaskRow({ task, theme, platforms, kpis, onCo
 
 function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
   const [data, setData] = useState({ date: `${currentMonth}-01`, title: '', text: '', platformId: platforms[0]?.id || '', kpiIds: [] });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setData(prev => ({
-      ...prev,
-      date: prev.date?.startsWith(currentMonth) ? prev.date : `${currentMonth}-01`,
-      platformId: prev.platformId || platforms[0]?.id || ''
-    }));
+    setData(prev => ({ ...prev, date: `${currentMonth}-01`, platformId: prev.platformId || platforms[0]?.id || '' }));
   }, [currentMonth, platforms]);
 
   const handleSave = async () => {
-    if(!data.title) return;
-    const success = await onSave(data);
+    if(isSubmitting || !data.title.trim()) return;
+    setIsSubmitting(true);
+    const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
     if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
+    setIsSubmitting(false);
   };
 
   const availableKpis = kpis.filter(k => k.platformId === data.platformId);
@@ -1277,14 +1353,56 @@ function InlineTaskEditor({ currentMonth, platforms, kpis, theme, onSave }) {
         <textarea rows="1" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} onKeyDown={e=>{if(e.key==='Enter' && e.ctrlKey)handleSave()}} className={`w-full px-4 py-2 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-700 placeholder-slate-600':'border-slate-200'}`}/>
       </td>
       <td className="p-3 text-right align-top">
-         <button onClick={handleSave} disabled={!data.title} className="w-full py-2.5 bg-red-600 text-white text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> В план</button>
+         <button onClick={handleSave} disabled={!data.title.trim() || isSubmitting} className="w-full py-2.5 bg-red-600 text-white text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
       </td>
     </tr>
   )
 }
 
+function InlineTaskCardEditor({ currentMonth, platforms, kpis, theme, onSave }) {
+  const [data, setData] = useState({ date: `${currentMonth}-01`, title: '', text: '', platformId: platforms[0]?.id || '', kpiIds: [] });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setData(prev => ({ ...prev, date: `${currentMonth}-01`, platformId: prev.platformId || platforms[0]?.id || '' }));
+  }, [currentMonth, platforms]);
+
+  const handleSave = async () => {
+    if (isSubmitting || !data.title.trim()) return;
+    setIsSubmitting(true);
+    const success = await onSave({ ...data, title: data.title.trim(), text: data.text.trim() });
+    if (success) setData(prev => ({ ...prev, title: '', text: '', kpiIds: [] }));
+    setIsSubmitting(false);
+  };
+
+  const availableKpis = kpis.filter(k => k.platformId === data.platformId);
+
+  return (
+    <div className={`p-4 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-white border-slate-100'}`}>
+      <div className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Быстро добавить в план</div>
+      <div className="grid grid-cols-1 gap-3">
+        <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className={`w-full px-3 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700':'border-slate-200'}`}/>
+        <select value={data.platformId} onChange={e=>setData({...data, platformId: e.target.value, kpiIds: []})} className={`w-full px-3 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-200':'border-slate-200 text-slate-800'}`}>
+          {platforms.map(p => <option key={p.id} value={p.id} className="dark:bg-slate-800">{p.name}</option>)}
+        </select>
+        {availableKpis.length > 0 && (
+          <select value={data.kpiIds[0] || ''} onChange={e=>setData({...data, kpiIds: e.target.value ? [e.target.value] : []})} className={`w-full px-3 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 text-slate-400':'border-slate-200 text-slate-600'}`}>
+            <option value="">-- Формат контента --</option>
+            {availableKpis.map(k => <option key={k.id} value={k.id} className="dark:bg-slate-800">{k.title}</option>)}
+          </select>
+        )}
+        <input type="text" placeholder="Тема / Идея публикации..." value={data.title} onChange={e=>setData({...data, title: e.target.value})} onKeyDown={e=>{if(e.key==='Enter')handleSave()}} className={`w-full px-4 py-2.5 text-sm font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent ${theme==='dark'?'border-slate-700 placeholder-slate-500':'border-slate-200'}`}/>
+        <textarea rows="2" placeholder="Текст или сценарий (необязательно)..." value={data.text} onChange={e=>setData({...data, text: e.target.value})} className={`w-full px-4 py-2.5 text-xs font-medium border rounded-xl outline-none focus:border-red-600 bg-transparent resize-none ${theme==='dark'?'border-slate-700 placeholder-slate-600':'border-slate-200'}`}/>
+        <button onClick={handleSave} disabled={!data.title.trim() || isSubmitting} className="w-full py-3 bg-red-600 text-white text-xs font-semibold rounded-xl disabled:opacity-50 flex justify-center items-center gap-1.5 transition-transform active:scale-95 shadow-sm shadow-red-600/20"><Plus size={16}/> {isSubmitting ? 'Сохранение...' : 'В план'}</button>
+      </div>
+    </div>
+  )
+}
+
+
 function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
   const [formData, setFormData] = useState(task || { title: '', text: '', date: new Date().toISOString().split('T')[0], platformId: platforms[0]?.id || '', kpiIds: [], link: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePlatformChange = (e) => {
     setFormData({...formData, platformId: e.target.value, kpiIds: []});
@@ -1299,6 +1417,13 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
   };
 
   const availableKpis = kpis.filter(k => k.platformId === formData.platformId);
+
+  const handleSubmit = async () => {
+    if (isSubmitting || !formData.title.trim()) return;
+    setIsSubmitting(true);
+    const success = await onSave({ ...formData, title: formData.title.trim(), text: (formData.text || '').trim(), link: (formData.link || '').trim() });
+    if (!success) setIsSubmitting(false);
+  };
 
   return (
     <Modal title={task?.id ? 'Редактировать задачу' : 'Новая задача'} onClose={onClose}>
@@ -1329,8 +1454,8 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
             Форматы контента
             <span className="text-[10px] font-medium text-slate-400 mt-1">Выберите один или несколько форматов</span>
           </label>
-          <div className={`border rounded-2xl p-3 space-y-2 max-h-48 overflow-y-auto custom-scrollbar ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-slate-50/50 border-slate-100'}`}>
-            {availableKpis.length === 0 ? <p className="text-xs text-slate-400 font-medium text-center py-4">Нет форматов</p> : null}
+          <div className={`border rounded-2xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 ${theme==='dark'?'bg-slate-900/50 border-slate-800':'bg-slate-50/50 border-slate-100'}`}>
+            {availableKpis.length === 0 ? <p className="text-xs text-slate-400 font-medium text-center py-4 sm:col-span-2">Нет форматов</p> : null}
             {availableKpis.map(k => {
                const colorClass = getFormatColor(k);
                return (
@@ -1346,8 +1471,8 @@ function TaskFormModal({ task, kpis, platforms, theme, onSave, onClose }) {
           </div>
         </div>
 
-        <button onClick={() => onSave(formData)} disabled={!formData.title} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl disabled:opacity-50 mt-4 transition-transform active:scale-95 shadow-sm text-sm">
-          Сохранить задачу
+        <button onClick={handleSubmit} disabled={!formData.title.trim() || isSubmitting} className="w-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold py-3.5 rounded-xl disabled:opacity-50 mt-4 transition-transform active:scale-95 shadow-sm text-sm">
+          {isSubmitting ? 'Сохранение...' : 'Сохранить задачу'}
         </button>
       </div>
     </Modal>
@@ -1510,7 +1635,7 @@ function AnalyticsDashboard({ data, prevData, theme, allData, months, onPrint })
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className={`p-6 rounded-3xl border shadow-sm ${theme==='dark'?'bg-slate-900 border-slate-800':'bg-white border-slate-100'}`}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500 flex justify-between">Динамика Охвата <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium active:scale-95"><Download size={14}/> Скачать PDF</button></h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-6 text-slate-500 flex justify-between">Динамика Охвата за 3 месяца <button onClick={onPrint} className="text-blue-500 flex items-center gap-1.5 hover:underline font-medium active:scale-95"><Download size={14}/> Скачать PDF</button></h3>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -1548,13 +1673,29 @@ function AnalyticsDashboard({ data, prevData, theme, allData, months, onPrint })
   );
 }
 
-function AnalyticsPrintView({ data, currentMonth, kpiProgress }) {
+function AnalyticsPrintView({ data, currentMonth, kpiProgress, allData, months }) {
+  const comparisonData = (months || []).slice(-3).map(m => {
+    const d = allData?.[m.value];
+    return {
+      name: m.label.split(' ')[0],
+      followers: d?.isSubmitted ? Number(d.followers) || 0 : 0,
+      reach: d?.isSubmitted ? Number(d.reach) || 0 : 0,
+      hasData: Boolean(d?.isSubmitted),
+    };
+  });
+  const maxReach = Math.max(1, ...comparisonData.map(d => d.reach));
+  const maxFollowers = Math.max(1, ...comparisonData.map(d => d.followers));
+
   return (
     <div className="max-w-4xl mx-auto font-sans">
       <div className="border-b-[3px] border-red-600 pb-5 mb-8 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-3"><TrendingUp size={28} strokeWidth={2.5}/> ПОКИЗА</h1>
           <p className="text-base text-slate-600 font-medium">Аналитический отчет • {currentMonth}</p>
+        </div>
+        <div className="text-right">
+           <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата создания</div>
+           <div className="text-sm font-medium">{new Date().toLocaleDateString('ru-RU')}</div>
         </div>
       </div>
 
@@ -1565,6 +1706,31 @@ function AnalyticsPrintView({ data, currentMonth, kpiProgress }) {
           <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Охват</div><div className="text-3xl font-bold text-slate-900">{data.reach}</div></div>
           <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50"><div className="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Взаимодействия</div><div className="text-3xl font-bold text-slate-900">{Number(data.likes) + Number(data.comments)}</div></div>
           <div className="p-5 border border-red-100 rounded-2xl bg-red-50"><div className="text-xs text-red-600 uppercase font-semibold tracking-wider mb-2">ER (Вовлеченность)</div><div className="text-3xl font-bold text-red-600">{data.er}%</div></div>
+        </div>
+      </div>
+
+      <div className="mb-10 break-inside-avoid">
+        <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2"><BarChart3 size={22} className="text-purple-600"/> Сравнение за 3 месяца</h2>
+        <div className="border border-slate-200 rounded-2xl p-5 bg-white">
+          <div className="grid grid-cols-3 gap-5 h-56 items-end">
+            {comparisonData.map(item => (
+              <div key={item.name} className="h-full flex flex-col justify-end">
+                <div className="flex items-end justify-center gap-3 h-36 border-b border-slate-200 pb-0">
+                  <div className={`w-10 rounded-t-lg ${item.hasData ? 'bg-red-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.reach / maxReach) * 100)}%` : '8px' }}></div>
+                  <div className={`w-10 rounded-t-lg ${item.hasData ? 'bg-blue-500' : 'bg-slate-200'}`} style={{ height: item.hasData ? `${Math.max(8, (item.followers / maxFollowers) * 100)}%` : '8px' }}></div>
+                </div>
+                <div className="text-center mt-3">
+                  <div className="font-bold text-slate-800 text-sm">{item.name}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold mt-1">Охват: {item.hasData ? item.reach.toLocaleString('ru') : 'нет данных'}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">Подписчики: {item.hasData ? item.followers.toLocaleString('ru') : 'нет данных'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-6 mt-5 text-xs font-semibold text-slate-600">
+            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500"></span>Охват</span>
+            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span>Подписчики</span>
+          </div>
         </div>
       </div>
 
@@ -1605,7 +1771,7 @@ function ContentPlanPrintView({ currentMonthLabel, monthTasks, platforms, kpis }
           <p className="text-base text-slate-600 font-medium">Контент-план • {currentMonthLabel}</p>
         </div>
         <div className="text-right">
-           <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата генерации</div>
+           <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Дата создания</div>
            <div className="text-sm font-medium">{new Date().toLocaleDateString('ru-RU')}</div>
         </div>
       </div>
