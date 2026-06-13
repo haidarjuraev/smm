@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
-const APP_VERSION = 'd1-sync-v14-mobile-pdf-fix-2026-06-13';
+const APP_VERSION = 'd1-sync-v15-dynamic-months-2026-06-13';
 
 const Instagram = Globe;
 const Facebook = Users;
@@ -22,20 +22,48 @@ const INITIAL_USERS = {
   smm: { id: 2, login: 'smm', role: 'smm', pass: '@Smm4565@', name: 'SMM Специалист', email: 'smm@pokiza.com' }
 };
 
-const MONTHS = [
-  { value: '2026-01', label: 'Январь 2026' },
-  { value: '2026-02', label: 'Февраль 2026' },
-  { value: '2026-03', label: 'Март 2026' },
-  { value: '2026-04', label: 'Апрель 2026' },
-  { value: '2026-05', label: 'Май 2026' },
-  { value: '2026-06', label: 'Июнь 2026' },
-  { value: '2026-07', label: 'Июль 2026' },
-  { value: '2026-08', label: 'Август 2026' },
-  { value: '2026-09', label: 'Сентябрь 2026' },
-  { value: '2026-10', label: 'Октябрь 2026' },
-  { value: '2026-11', label: 'Ноябрь 2026' },
-  { value: '2026-12', label: 'Декабрь 2026' },
+
+const RU_MONTH_NAMES = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
+
+const pad2 = (num) => String(num).padStart(2, '0');
+
+const getMonthValue = (date = new Date()) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+
+const getMonthLabel = (value) => {
+  const [yearRaw, monthRaw] = String(value || getMonthValue()).split('-');
+  const year = Number(yearRaw) || new Date().getFullYear();
+  const monthIndex = Math.min(11, Math.max(0, (Number(monthRaw) || 1) - 1));
+  return `${RU_MONTH_NAMES[monthIndex]} ${year}`;
+};
+
+const addMonths = (value, delta) => {
+  const [yearRaw, monthRaw] = String(value || getMonthValue()).split('-');
+  const year = Number(yearRaw) || new Date().getFullYear();
+  const monthIndex = Math.min(11, Math.max(0, (Number(monthRaw) || 1) - 1));
+  const date = new Date(year, monthIndex + delta, 1);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+};
+
+const buildYearMonths = (year) => {
+  const safeYear = Number(year) || new Date().getFullYear();
+  return RU_MONTH_NAMES.map((label, index) => ({
+    value: `${safeYear}-${pad2(index + 1)}`,
+    label: `${label} ${safeYear}`
+  }));
+};
+
+const buildTimelineMonths = (centerValue, count = 12) => {
+  const total = Math.max(1, Number(count) || 12);
+  const startOffset = -(total - 1);
+  return Array.from({ length: total }, (_, index) => {
+    const value = addMonths(centerValue, startOffset + index);
+    return { value, label: getMonthLabel(value) };
+  });
+};
+
 
 const PLATFORM_ICONS = [
   { id: 'instagram', icon: Instagram, name: 'Instagram' },
@@ -323,10 +351,56 @@ function LoginScreen({ usersDb, onLogin, theme, appSettings }) {
   );
 }
 
+
+function MonthSelector({ currentMonth, onChange, theme }) {
+  const year = Number(String(currentMonth).slice(0, 4)) || new Date().getFullYear();
+  const options = useMemo(() => buildYearMonths(year), [year]);
+
+  return (
+    <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl border shadow-sm transition-colors ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-200'}`}>
+      <button
+        type="button"
+        onClick={() => onChange(addMonths(currentMonth, -12))}
+        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors active:scale-95"
+        title="Предыдущий год"
+      >
+        ‹
+      </button>
+      <CalendarIcon size={16} className="text-slate-400 shrink-0" />
+      <select
+        value={currentMonth}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent text-base md:text-sm font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white min-w-[120px]"
+      >
+        {options.map(m => <option key={m.value} value={m.value} className="dark:bg-slate-800">{m.label}</option>)}
+      </select>
+      <button
+        type="button"
+        onClick={() => onChange(addMonths(currentMonth, 12))}
+        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors active:scale-95"
+        title="Следующий год"
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
 function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, setTheme, appSettings, setAppSettings, reloadUsersAndSettings }) {
   const isAdmin = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState('tasks');
-  const [currentMonth, setCurrentMonth] = useState('2026-06');
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    try {
+      return localStorage.getItem('pokiza_currentMonth') || getMonthValue();
+    } catch {
+      return getMonthValue();
+    }
+  });
+  const timelineMonths = useMemo(() => buildTimelineMonths(currentMonth, 12), [currentMonth]);
+
+  useEffect(() => {
+    try { localStorage.setItem('pokiza_currentMonth', currentMonth); } catch {}
+  }, [currentMonth]);
   
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [selectedDashboardPlatform, setSelectedDashboardPlatform] = useState('all');
@@ -450,12 +524,9 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
   const currentAnalytics = analytics[currentMonth] || { month: currentMonth, followers: '', reach: '', likes: '', comments: '', er: 0, text: '', isSubmitted: false };
   
   const prevAnalytics = useMemo(() => {
-    const prevMonthIndex = MONTHS.findIndex(m => m.value === currentMonth) - 1;
-    if (prevMonthIndex >= 0) {
-      const pa = analytics[MONTHS[prevMonthIndex].value];
-      if (pa && pa.isSubmitted) return pa;
-    }
-    return null;
+    const prevMonth = addMonths(currentMonth, -1);
+    const pa = analytics[prevMonth];
+    return pa && pa.isSubmitted ? pa : null;
   }, [analytics, currentMonth]);
 
   const handlePdfAction = useCallback(async (mode, actionType = 'download') => {
@@ -612,7 +683,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
 
     try {
       const id = cleanTaskData.id ? String(cleanTaskData.id) : `task_${Date.now()}`;
-      const month = cleanTaskData.month || currentMonth || cleanTaskData.date.slice(0, 7);
+      const month = cleanTaskData.date ? cleanTaskData.date.slice(0, 7) : (cleanTaskData.month || currentMonth);
       const status = cleanTaskData.link ? 'completed' : cleanTaskData.status || 'pending';
 
       await apiRequest('/api/tasks', {
@@ -887,12 +958,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
             {NAV_ITEMS.find(i => i.id === activeTab)?.label}
           </h2>
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border shadow-sm transition-colors ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-200'}`}>
-              <CalendarIcon size={16} className="text-slate-400" />
-              <select value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="bg-transparent text-base md:text-sm font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white">
-                {MONTHS.map(m => <option key={m.value} value={m.value} className="dark:bg-slate-800">{m.label}</option>)}
-              </select>
-            </div>
+            <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} theme={theme} />
           </div>
         </header>
 
@@ -903,11 +969,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
             {/* Mobile Context Header */}
             <div className="md:hidden flex items-center justify-between mb-2">
                <h2 className="text-base font-semibold">{NAV_ITEMS.find(i => i.id === activeTab)?.label}</h2>
-               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-200'}`}>
-                 <select value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="bg-transparent text-base md:text-xs font-semibold outline-none cursor-pointer border-none p-0 focus:ring-0 dark:text-white">
-                    {MONTHS.map(m => <option key={m.value} value={m.value} className="dark:bg-slate-800">{m.label}</option>)}
-                 </select>
-               </div>
+               <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} theme={theme} />
             </div>
 
             {}
@@ -1149,7 +1211,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                 <section className={`border rounded-3xl p-6 sm:p-8 shadow-sm ${theme==='dark'?'bg-slate-800 border-slate-700':'bg-white border-slate-100'}`}>
                   <div className={`mb-8 border-b pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${theme==='dark'?'border-slate-700':'border-slate-100'}`}>
                     <div>
-                      <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 size={20} className="text-indigo-500"/> Сводка за {MONTHS.find(m=>m.value===currentMonth)?.label}</h2>
+                      <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 size={20} className="text-indigo-500"/> Сводка за {getMonthLabel(currentMonth)}</h2>
                       <p className="text-base md:text-xs text-slate-500 mt-1 font-medium">Аналитический отчет по итогам месяца</p>
                     </div>
                     {currentAnalytics.isSubmitted ? (
@@ -1175,7 +1237,7 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
                        }} 
                     />
                   ) : (
-                    <AnalyticsDashboard data={currentAnalytics} prevData={prevAnalytics} theme={theme} allData={analytics} months={MONTHS} />
+                    <AnalyticsDashboard data={currentAnalytics} prevData={prevAnalytics} theme={theme} allData={analytics} months={timelineMonths} />
                   )}
                 </section>
               </div>
@@ -1863,8 +1925,8 @@ function MainApp({ user, usersDb, setUsersDb, onLogout, onUpdateUser, theme, set
     {printMode && (
       <div style={{ position: 'fixed', left: '-10000px', top: 0, width: printMode === 'plan' ? '1100px' : '790px', background: '#ffffff', color: '#0f172a', pointerEvents: 'none', zIndex: -1 }}>
         <div id="pdf-content-wrapper" className="bg-white font-sans text-slate-900 p-10 m-0" style={{ width: printMode === 'plan' ? '1100px' : '790px', minHeight: '100px' }}>
-          {printMode === 'analytics' && <AnalyticsPrintView data={pdfAnalyticsData} currentMonth={MONTHS.find(m=>m.value===currentMonth)?.label} kpiProgress={kpiProgress} allData={analytics} months={MONTHS} appSettings={appSettings} />}
-          {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={MONTHS.find(m=>m.value===currentMonth)?.label} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} appSettings={appSettings} />}
+          {printMode === 'analytics' && <AnalyticsPrintView data={pdfAnalyticsData} currentMonth={getMonthLabel(currentMonth)} kpiProgress={kpiProgress} allData={analytics} months={timelineMonths} appSettings={appSettings} />}
+          {printMode === 'plan' && <ContentPlanPrintView currentMonthLabel={getMonthLabel(currentMonth)} monthTasks={sortedMonthTasks} platforms={platforms} kpis={kpis} appSettings={appSettings} />}
         </div>
       </div>
     )}

@@ -186,6 +186,19 @@ async function ensureSchema(db) {
   await ensureColumn(db, 'analytics', analyticsCols, ['text'], 'text', 'TEXT');
   await ensureColumn(db, 'analytics', analyticsCols, ['is_submitted', 'isSubmitted'], 'is_submitted', 'INTEGER DEFAULT 0');
 
+  const latestTaskCols = await getColumns(db, 'tasks');
+  const latestKpiCols = await getColumns(db, 'kpis');
+  const taskPlatformIndexCol = pickColumn(latestTaskCols, 'platform_id', 'platformId');
+  const kpiPlatformIndexCol = pickColumn(latestKpiCols, 'platform_id', 'platformId');
+
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_month ON tasks(month)').run();
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(date)').run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_tasks_platform ON tasks(${q(taskPlatformIndexCol)})`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_kpis_platform ON kpis(${q(kpiPlatformIndexCol)})`).run();
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_task_kpis_task ON task_kpis(task_id)').run();
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_task_kpis_kpi ON task_kpis(kpi_id)').run();
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_analytics_month ON analytics(month)').run();
+
   await db.prepare(`
     INSERT OR IGNORE INTO users (id, login, pass, role, name, email)
     VALUES
@@ -235,9 +248,10 @@ export default {
       const schema = await getSchema(env.DB);
 
       if (url.pathname === '/api/health') {
-        return json({ ok: true, message: 'Pokiza SMM API работает' });
+        return json({ ok: true, message: 'Pokiza SMM API работает', version: 'd1-sync-v15-dynamic-months' });
       }
 
+      // USERS
       if (url.pathname === '/api/users' && request.method === 'GET') {
         const { results } = await env.DB.prepare('SELECT id, login, pass, role, name, email FROM users ORDER BY login ASC').all();
         return json(normalizeUsers(results));
@@ -278,6 +292,7 @@ export default {
         return json({ ok: true });
       }
 
+      // SETTINGS
       if (url.pathname === '/api/settings' && request.method === 'GET') {
         const { results } = await env.DB.prepare('SELECT key, value FROM settings').all();
         const settings = { appName: 'ПОКИЗА', logoUrl: '' };
@@ -299,6 +314,7 @@ export default {
         return json({ ok: true });
       }
 
+      // PLATFORMS
       if (url.pathname === '/api/platforms' && request.method === 'GET') {
         const iconCol = q(schema.platforms.icon);
         const { results } = await env.DB.prepare(`
@@ -333,6 +349,7 @@ export default {
         return json({ ok: true });
       }
 
+      // KPIS
       if (url.pathname === '/api/kpis' && request.method === 'GET') {
         const platformCol = q(schema.kpis.platform);
         const colorCol = q(schema.kpis.color);
@@ -368,6 +385,7 @@ export default {
         return json({ ok: true });
       }
 
+      // TASKS
       if (url.pathname === '/api/tasks' && request.method === 'GET') {
         const month = url.searchParams.get('month');
         const platformCol = q(schema.tasks.platform);
@@ -406,7 +424,7 @@ export default {
         const body = await readJson(request);
         const id = String(body.id || `task_${Date.now()}`);
         const date = body.date || new Date().toISOString().slice(0, 10);
-        const month = body.month || date.slice(0, 7);
+        const month = date.slice(0, 7);
         const status = body.link ? 'completed' : body.status || 'pending';
         const order = Number(body.order || 0);
         const platformCol = q(schema.tasks.platform);
@@ -451,6 +469,7 @@ export default {
         return json({ ok: true });
       }
 
+      // ANALYTICS
       if (url.pathname === '/api/analytics' && request.method === 'GET') {
         const submittedCol = q(schema.analytics.submitted);
         const { results } = await env.DB.prepare(`
